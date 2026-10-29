@@ -1,0 +1,6 @@
+---
+# Deploy แบบ release folder + symlink "current" (ใช้กันแพร่หลาย เช่น Capistrano/Deployer)
+webapp_version: "1.0.0"
+webapp_color: "#2e7d32"
+webapp_base_dir: /var/www/app
+webapp_keep_releases: 3

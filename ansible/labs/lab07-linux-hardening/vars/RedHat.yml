@@ -1,0 +1,3 @@
+---
+ssh_service: sshd
+insecure_packages: [telnet, rsh, talk, ypbind]

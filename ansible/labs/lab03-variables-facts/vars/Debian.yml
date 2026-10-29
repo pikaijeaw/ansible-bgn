@@ -1,0 +1,9 @@
+---
+# ค่าเฉพาะของตระกูล Debian/Ubuntu
+toolkit_packages:
+  - dnsutils
+  - netcat-openbsd
+  - traceroute
+  - sysstat
+cron_package: cron
+cron_service: cron

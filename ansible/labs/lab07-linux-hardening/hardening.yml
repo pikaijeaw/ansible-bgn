@@ -1,0 +1,177 @@
+---
+# Lab 07: Linux hardening ตามแนว CIS Benchmark (ฉบับย่อ)
+# ใช้ได้ 2 แบบ:
+#   audit  : ansible-playbook hardening.yml --check --diff   (ดู drift โดยยังไม่แก้)
+#   enforce: ansible-playbook hardening.yml
+- name: Linux security hardening baseline
+  hosts: linux
+  become: true
+
+  vars:
+    ssh_permit_root_login: "no"
+    ssh_password_authentication: false
+    ssh_max_auth_tries: 4
+    ssh_client_alive_interval: 300
+    password_max_days: 90
+    password_min_days: 1
+    password_warn_age: 7
+    # net.* เป็นค่าต่อ network namespace จึงตั้งใน container ได้อย่างปลอดภัย
+    hardening_sysctl:
+      net.ipv4.ip_forward: 0
+      net.ipv4.conf.all.send_redirects: 0
+      net.ipv4.conf.default.send_redirects: 0
+      net.ipv4.conf.all.accept_redirects: 0
+      net.ipv4.conf.default.accept_redirects: 0
+      net.ipv4.conf.all.accept_source_route: 0
+      net.ipv4.conf.all.log_martians: 1
+      net.ipv4.icmp_echo_ignore_broadcasts: 1
+      net.ipv4.tcp_syncookies: 1
+    disabled_filesystems: [cramfs, freevxfs, hfs, hfsplus, jffs2, udf]
+
+  handlers:
+    - name: Reload sshd
+      ansible.builtin.service:
+        name: "{{ ssh_service }}"
+        state: reloaded
+
+  tasks:
+    - name: Load OS specific variables
+      ansible.builtin.include_vars: "{{ ansible_facts['os_family'] }}.yml"
+      tags: [always]
+
+    # ---------- 1. Software ----------
+    - name: "[CIS 2.x] Remove insecure legacy clients"
+      ansible.builtin.package:
+        name: "{{ insecure_packages }}"
+        state: absent
+      tags: [packages]
+
+    - name: Ensure /etc/modprobe.d exists (container images may not ship it)
+      ansible.builtin.file:
+        path: /etc/modprobe.d
+        state: directory
+        mode: "0755"
+      tags: [kernel]
+
+    - name: "[CIS 1.1.1] Disable unused filesystem kernel modules"
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/cis-disable-filesystems.conf
+        mode: "0644"
+        content: |
+          # Managed by Ansible (lab07)
+          {% for fs in disabled_filesystems %}
+          install {{ fs }} /bin/true
+          blacklist {{ fs }}
+          {% endfor %}
+      tags: [kernel]
+
+    # ---------- 2. Network ----------
+    - name: "[CIS 3.x] Network kernel parameters"
+      ansible.posix.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        sysctl_file: /etc/sysctl.d/60-cis-network.conf
+        sysctl_set: true
+        state: present
+      loop: "{{ hardening_sysctl | dict2items }}"
+      tags: [sysctl]
+
+    # ---------- 3. SSH ----------
+    - name: "[CIS 5.2] Harden sshd (validated before it is applied)"
+      ansible.builtin.template:
+        src: sshd-hardening.conf.j2
+        dest: /etc/ssh/sshd_config.d/00-hardening.conf
+        mode: "0600"
+        validate: /usr/sbin/sshd -t -f %s
+      notify: Reload sshd
+      tags: [ssh]
+
+    - name: "[CIS 5.2.1] Permissions on sshd_config"
+      ansible.builtin.file:
+        path: /etc/ssh/sshd_config
+        owner: root
+        group: root
+        mode: "0600"
+      tags: [ssh]
+
+    - name: "[CIS 1.7] Login warning banner"
+      ansible.builtin.copy:
+        dest: "{{ item }}"
+        mode: "0644"
+        content: |
+          ******************************************************************
+          * Authorized users only. All activity is monitored and logged.   *
+          * Unauthorized access is prohibited and will be prosecuted.      *
+          ******************************************************************
+      loop: [/etc/issue, /etc/issue.net]
+      tags: [banner]
+
+    # ---------- 4. Accounts ----------
+    - name: "[CIS 5.5.1] Password aging policy in login.defs"
+      ansible.builtin.lineinfile:
+        path: /etc/login.defs
+        regexp: "^{{ item.key }}\\s"
+        line: "{{ item.key }}\t{{ item.value }}"
+      loop:
+        - { key: PASS_MAX_DAYS, value: "{{ password_max_days }}" }
+        - { key: PASS_MIN_DAYS, value: "{{ password_min_days }}" }
+        - { key: PASS_WARN_AGE, value: "{{ password_warn_age }}" }
+      loop_control:
+        label: "{{ item.key }}={{ item.value }}"
+      tags: [accounts]
+
+    - name: "[CIS 5.4.4] Default umask 027"
+      ansible.builtin.lineinfile:
+        path: /etc/login.defs
+        regexp: "^UMASK\\s"
+        line: "UMASK\t027"
+      tags: [accounts]
+
+    # ---------- 5. File permissions ----------
+    - name: "[CIS 5.1] Restrict cron files to root"
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+        mode: "{{ item.mode }}"
+        state: "{{ item.state }}"
+      loop:
+        - { path: /etc/crontab, mode: "0600", state: file }
+        - { path: /etc/cron.d, mode: "0700", state: directory }
+        - { path: /etc/cron.daily, mode: "0700", state: directory }
+      loop_control:
+        label: "{{ item.path }}"
+      tags: [cron]
+
+    - name: Find world-writable files in /etc (audit only)
+      ansible.builtin.command: find /etc -xdev -type f -perm -0002
+      register: world_writable
+      changed_when: false
+      check_mode: false
+      tags: [audit]
+
+    - name: Report world-writable files
+      ansible.builtin.debug:
+        msg: "FINDING {{ inventory_hostname }}: world-writable files {{ world_writable.stdout_lines }}"
+      when: world_writable.stdout_lines | length > 0
+      tags: [audit]
+
+    # ---------- 6. Firewall (opt-in) ----------
+    # tag "never" = ไม่รันจนกว่าจะสั่ง --tags firewall (ใน container มักใช้ firewall ไม่ได้)
+    - name: "[CIS 3.5] Enable UFW with default deny (Ubuntu)"
+      when: ansible_facts['os_family'] == 'Debian'
+      tags: [firewall, never]
+      block:
+        - name: Install ufw
+          ansible.builtin.apt:
+            name: ufw
+            state: present
+        - name: Allow SSH before enabling the firewall
+          community.general.ufw:
+            rule: allow
+            name: OpenSSH
+        - name: Default deny incoming and enable
+          community.general.ufw:
+            state: enabled
+            policy: deny
+            direction: incoming

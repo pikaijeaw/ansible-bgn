@@ -1,0 +1,39 @@
+# {{ ansible_managed }}
+{% if app_backend_ports | length > 0 %}
+upstream app_backend {
+{% for port in app_backend_ports %}
+    server 127.0.0.1:{{ port }};
+{% endfor %}
+}
+{% endif %}
+
+server {
+    listen {{ nginx_port }}{% if nginx_default_server %} default_server{% endif %};
+    server_name {{ inventory_hostname }}.{{ domain }} {{ inventory_hostname }};
+
+    root {{ web_root }};
+    index index.html;
+
+    access_log /var/log/nginx/app_access.log;
+    error_log  /var/log/nginx/app_error.log warn;
+
+    client_max_body_size {{ nginx_client_max_body_size }};
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok {{ inventory_hostname }}\n";
+    }
+{% if app_backend_ports | length > 0 %}
+
+    location /api/ {
+        proxy_pass http://app_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+{% endif %}
+}

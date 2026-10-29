@@ -1,0 +1,5 @@
+# ตัวแปรที่ทุกเครื่องใช้ร่วมกัน
+env_name: lab
+company: BGN Corp
+timezone: Asia/Bangkok
+admin_email: ops@example.com

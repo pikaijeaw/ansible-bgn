@@ -1,0 +1,138 @@
+---
+# Lab 08: Rolling OS patching แบบไม่ให้บริการล่ม
+#  - ทำทีละเครื่อง (serial) ถ้า fail ให้หยุดทันที
+#  - เครื่องใน group web ถูกถอดออกจาก load balancer ก่อน แล้วค่อยใส่กลับหลัง health check ผ่าน
+#  - reboot เฉพาะเครื่องที่ต้อง reboot จริง
+- name: Rolling patch Linux servers
+  hosts: "{{ target | default('linux') }}"
+  become: true
+  serial: "{{ patch_batch | default(1) }}"
+  max_fail_percentage: 0
+  order: sorted
+
+  vars:
+    patch_allow_reboot: true
+    patch_force_reboot: false
+    patch_security_only: false      # RHEL: ลงเฉพาะ security errata
+    patch_exclude: []               # เช่น ['nginx*', 'kernel*'] ถ้ายังไม่พร้อมอัปเกรด
+    patch_min_free_mb: 1024
+    patch_log: /var/log/company/patching.log
+    lb_socket: /run/haproxy/admin.sock
+    lb_backend: be_web
+    in_lb_pool: "{{ inventory_hostname in groups['web'] | default([]) }}"
+
+  pre_tasks:
+    - name: Check free space on /var
+      ansible.builtin.command: df --output=avail -m /var
+      register: var_free
+      changed_when: false
+
+    - name: Abort if not enough disk space for packages
+      ansible.builtin.assert:
+        that: var_free.stdout_lines[-1] | trim | int >= patch_min_free_mb
+        fail_msg: "/var has only {{ var_free.stdout_lines[-1] | trim }} MB free"
+
+    - name: Snapshot hook (ในงานจริง เช่น vmware.vmware_rest / amazon.aws.ec2_snapshot)
+      ansible.builtin.debug:
+        msg: "Take snapshot of {{ inventory_hostname }} before patching"
+
+    - name: Drain host from load balancer
+      community.general.haproxy:
+        state: disabled
+        host: "{{ inventory_hostname }}"
+        backend: "{{ lb_backend }}"
+        socket: "{{ lb_socket }}"
+        drain: true
+        wait: true
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['lb'] }}"
+      when: in_lb_pool
+
+  tasks:
+    - name: Patch Debian/Ubuntu
+      when: ansible_facts['os_family'] == 'Debian'
+      block:
+        - name: Hold excluded packages
+          ansible.builtin.dpkg_selections:
+            name: "{{ item }}"
+            selection: hold
+          loop: "{{ patch_exclude }}"
+
+        - name: Upgrade all packages
+          ansible.builtin.apt:
+            update_cache: true
+            upgrade: dist
+            autoremove: true
+          register: patch_result
+
+        - name: Check reboot-required flag
+          ansible.builtin.stat:
+            path: /var/run/reboot-required
+          register: reboot_flag
+
+        - name: Set reboot fact (Debian)
+          ansible.builtin.set_fact:
+            reboot_needed: "{{ reboot_flag.stat.exists }}"
+
+    - name: Patch RHEL/Rocky
+      when: ansible_facts['os_family'] == 'RedHat'
+      block:
+        - name: Upgrade packages
+          ansible.builtin.dnf:
+            name: "*"
+            state: latest
+            security: "{{ patch_security_only }}"
+            exclude: "{{ patch_exclude }}"
+          register: patch_result
+
+        - name: Ensure needs-restarting is available
+          ansible.builtin.dnf:
+            name: dnf-utils
+            state: present
+
+        - name: Ask needs-restarting whether a reboot is required
+          ansible.builtin.command: needs-restarting -r
+          register: needs_restarting
+          changed_when: false
+          failed_when: needs_restarting.rc not in [0, 1]
+
+        - name: Set reboot fact (RHEL)
+          ansible.builtin.set_fact:
+            reboot_needed: "{{ needs_restarting.rc == 1 }}"
+
+    - name: Reboot when required
+      ansible.builtin.reboot:
+        msg: "Rebooting for OS patches (Ansible)"
+        reboot_timeout: 600
+        post_reboot_delay: 5
+      when: patch_allow_reboot and (reboot_needed | default(false) | bool or patch_force_reboot | bool)
+
+    - name: Write patch log on the host
+      ansible.builtin.lineinfile:
+        path: "{{ patch_log }}"
+        line: "{{ now(utc=true).isoformat() }} patched changed={{ patch_result.changed }} reboot={{ reboot_needed | default(false) | bool or patch_force_reboot | bool }}"
+        create: true
+        mode: "0640"
+
+  post_tasks:
+    - name: Health check web service before returning it to the pool
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}/healthz"
+      register: health
+      retries: 10
+      delay: 3
+      until: health.status == 200
+      delegate_to: localhost
+      become: false
+      when: in_lb_pool
+
+    - name: Put host back into load balancer
+      community.general.haproxy:
+        state: enabled
+        host: "{{ inventory_hostname }}"
+        backend: "{{ lb_backend }}"
+        socket: "{{ lb_socket }}"
+        wait: true
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['lb'] }}"
+      when: in_lb_pool

@@ -1,0 +1,6 @@
+---
+haproxy_frontend_port: 80
+haproxy_backend_group: web
+haproxy_backend_port: 80
+haproxy_stats_port: 8404
+haproxy_socket: /run/haproxy/admin.sock

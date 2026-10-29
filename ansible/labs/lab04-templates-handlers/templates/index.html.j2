@@ -1,0 +1,10 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>{{ company }}</title></head>
+<body>
+  <h1>{{ company }} - {{ env_name | upper }}</h1>
+  <p>Served by <b>{{ inventory_hostname }}</b> ({{ ansible_facts['default_ipv4']['address'] | default('n/a') }})</p>
+  <p>OS: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}</p>
+  <p>Deployed by Ansible</p>
+</body>
+</html>

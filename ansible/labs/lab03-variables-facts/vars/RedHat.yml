@@ -1,0 +1,9 @@
+---
+# ค่าเฉพาะของตระกูล RHEL/Rocky/Alma
+toolkit_packages:
+  - bind-utils
+  - nmap-ncat
+  - traceroute
+  - sysstat
+cron_package: cronie
+cron_service: crond

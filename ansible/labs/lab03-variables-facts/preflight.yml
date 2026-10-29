@@ -1,0 +1,86 @@
+---
+# Lab 03: Pre-flight check + ติดตั้ง troubleshooting toolkit ที่รองรับหลาย OS
+- name: Pre-flight checks and OS-aware toolkit
+  hosts: linux
+  become: true
+
+  vars:
+    min_free_disk_gb: 1
+    min_memory_mb: 256
+    ops_dirs:
+      - { path: /opt/ops/bin, mode: "0755" }
+      - { path: /opt/ops/reports, mode: "0750" }
+
+  tasks:
+    - name: Load OS-family specific variables
+      ansible.builtin.include_vars: "{{ ansible_facts['os_family'] }}.yml"
+
+    - name: Read free space on / (GB)
+      ansible.builtin.command: df --output=avail -BG /
+      register: df_root
+      changed_when: false
+
+    - name: Store free space as a fact
+      ansible.builtin.set_fact:
+        root_free_gb: "{{ df_root.stdout_lines[-1] | trim | regex_replace('G$', '') | int }}"
+
+    - name: Assert server meets minimum requirements
+      ansible.builtin.assert:
+        that:
+          - root_free_gb | float >= min_free_disk_gb
+          - ansible_facts['memtotal_mb'] >= min_memory_mb
+        fail_msg: "{{ inventory_hostname }} ไม่ผ่าน: disk free={{ root_free_gb }}GB, RAM={{ ansible_facts['memtotal_mb'] }}MB"
+        success_msg: "{{ inventory_hostname }} ผ่าน pre-flight"
+
+    - name: Refresh apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install troubleshooting toolkit
+      ansible.builtin.package:
+        name: "{{ toolkit_packages + [cron_package] }}"
+        state: present
+
+    - name: Ensure cron is running
+      ansible.builtin.service:
+        name: "{{ cron_service }}"
+        state: started
+        enabled: true
+
+    - name: Create ops directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        mode: "{{ item.mode }}"
+      loop: "{{ ops_dirs }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Read running kernel
+      ansible.builtin.command: uname -r
+      register: kernel
+      changed_when: false
+
+    - name: Count established TCP connections
+      ansible.builtin.shell: set -o pipefail && ss -tan state established | tail -n +2 | wc -l
+      args:
+        executable: /bin/bash
+      register: tcp_conns
+      changed_when: false
+
+    - name: Warn when a host has many connections
+      ansible.builtin.debug:
+        msg: "WARNING {{ inventory_hostname }} has {{ tcp_conns.stdout }} established connections"
+      when: tcp_conns.stdout | int > 100
+
+    - name: Print host summary
+      ansible.builtin.debug:
+        msg:
+          - "Host        : {{ inventory_hostname }} ({{ group_names | join(',') }})"
+          - "OS          : {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
+          - "Kernel      : {{ kernel.stdout }}"
+          - "CPU / RAM   : {{ ansible_facts['processor_vcpus'] }} vCPU / {{ ansible_facts['memtotal_mb'] }} MB"
+          - "Free on /   : {{ root_free_gb }} GB"
+          - "TCP estab.  : {{ tcp_conns.stdout }}"

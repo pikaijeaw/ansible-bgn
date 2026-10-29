@@ -1,0 +1,14 @@
+---
+# handler สองตัว "listen" topic เดียวกัน และทำงานตามลำดับที่เขียนไว้:
+# validate ก่อน ถ้า nginx -t fail เครื่องนั้นจะ fail และไม่ถูก reload
+# (ห้ามใช้ notify ต่อจาก task ที่ changed_when: false เพราะ notify ทำงานเฉพาะตอนที่ task ขึ้น changed)
+- name: Validate nginx config
+  ansible.builtin.command: nginx -t
+  changed_when: false
+  listen: nginx config changed
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  listen: nginx config changed

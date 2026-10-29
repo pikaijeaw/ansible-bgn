@@ -1,0 +1,8 @@
+# Collections ที่ lab ใช้ ติดตั้งด้วย: ansible-galaxy collection install -r requirements.yml
+collections:
+  - name: ansible.posix
+  - name: community.general
+  - name: community.mysql
+  - name: community.crypto
+  - name: ansible.windows
+  - name: community.windows

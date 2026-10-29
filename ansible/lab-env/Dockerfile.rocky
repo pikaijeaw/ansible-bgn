@@ -1,0 +1,13 @@
+# Managed node: Rocky Linux 9 (ตระกูล RHEL) + systemd + sshd
+FROM rockylinux/rockylinux:9
+RUN dnf -y install systemd dbus-broker openssh-server python3 sudo iproute procps-ng \
+ && dnf clean all \
+ && useradd -m -s /bin/bash ansible \
+ && echo "ansible ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible \
+ && mkdir -p /home/ansible/.ssh && chmod 700 /home/ansible/.ssh \
+ && systemctl enable sshd.service \
+ && rm -f /run/nologin
+COPY .ssh/id_ed25519.pub /home/ansible/.ssh/authorized_keys
+RUN chown -R ansible:ansible /home/ansible/.ssh && chmod 600 /home/ansible/.ssh/authorized_keys
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]

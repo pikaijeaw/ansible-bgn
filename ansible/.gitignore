@@ -1,0 +1,5 @@
+labs/lab08-rolling-patching/pending-updates.txt
+labs/lab12-inventory-report/reports/
+labs/lab10-database-backup/backups/
+*.retry
+.vault_pass*
