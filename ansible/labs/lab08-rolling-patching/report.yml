@@ -8,7 +8,8 @@
     - name: List upgradable packages (Debian)
       ansible.builtin.shell: |
         set -o pipefail
-        apt-get -qq update && apt list --upgradable 2>/dev/null | tail -n +2
+        apt-get -qq update || echo "WARN: apt-get update failed, using cached package lists" >&2
+        apt list --upgradable 2>/dev/null | tail -n +2
       args:
         executable: /bin/bash
       register: deb_updates
