@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Analysis>
+		<Title>Lab - Certificates expiring within 30 days (from script result)</Title>
+		<Description><![CDATA[<P>อ่านผลที่ Task <I>Collect certificates expiring within 30 days</I> เขียนไว้</P>]]></Description>
+		<Relevance><![CDATA[windows of operating system]]></Relevance>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<Property Name="Expiring Certificates" ID="1" EvaluationPeriod="PT1H"><![CDATA[lines of file "C:\ProgramData\BigFixLab\cert-expiry.txt"]]></Property>
+		<Property Name="Result File Age (hours)" ID="2" EvaluationPeriod="PT1H"><![CDATA[(now - modification time of file "C:\ProgramData\BigFixLab\cert-expiry.txt") / hour]]></Property>
+	</Analysis>
+</BES>

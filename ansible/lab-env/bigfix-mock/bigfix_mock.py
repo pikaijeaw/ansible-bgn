@@ -7,7 +7,7 @@
   GET  /api/query?relevance=...[&output=json]
   POST /api/actions                 (body = BES XML)
   GET  /api/action/<id>/status
-  POST /api/fixlets/custom/<site>   (body = BES XML; import fixlet/task)
+  POST /api/{fixlets|tasks|analyses|computergroups}/custom/<site>   (body = BES XML)
 
 ของจริงใช้ HTTPS ที่ port 52311 ส่วน mock นี้ใช้ HTTP เพื่อให้ตั้งค่าง่าย
 user/password: admin / BigFix123!
@@ -194,13 +194,16 @@ class Handler(BaseHTTPRequestHandler):
             ACTIONS[action_id] = {"title": title, "targets": targets}
             print(f"[mock] action {action_id} created for {targets}", flush=True)
             return self._send(200, f'<BESAPI><Action Resource="http://bigfix:52311/api/action/{action_id}" LastModified="{bes_time(NOW)}"><Name>{title}</Name><ID>{action_id}</ID></Action></BESAPI>')
-        m = re.fullmatch(r"/api/(fixlets|tasks|analyses)/custom/([^/]+)", url.path)
+        m = re.fullmatch(r"/api/(fixlets|tasks|analyses|computergroups)/custom/([^/]+)", url.path)
         if m:
             item = next(iter(root), None)
-            title = item.findtext("Title") if item is not None else "Untitled"
+            expected = {"fixlets": "Fixlet", "tasks": "Task", "analyses": "Analysis", "computergroups": "ComputerGroup"}[m.group(1)]
+            if item is None or item.tag != expected:
+                return self._send(400, f"Expected <{expected}> for /api/{m.group(1)}", "text/plain")
+            title = item.findtext("Title")
             new_id = next(CUSTOM_IDS)
             print(f"[mock] imported '{title}' into custom site {m.group(2)} as {new_id}", flush=True)
-            return self._send(200, f'<BESAPI><{item.tag if item is not None else "Fixlet"} Resource="http://bigfix:52311/api/fixlet/custom/{m.group(2)}/{new_id}"><Name>{title}</Name><ID>{new_id}</ID></{item.tag if item is not None else "Fixlet"}></BESAPI>')
+            return self._send(200, f'<BESAPI><{item.tag} Resource="http://bigfix:52311/api/fixlet/custom/{m.group(2)}/{new_id}"><Name>{title}</Name><ID>{new_id}</ID></{item.tag}></BESAPI>')
         self._send(404, "Not found", "text/plain")
 
 

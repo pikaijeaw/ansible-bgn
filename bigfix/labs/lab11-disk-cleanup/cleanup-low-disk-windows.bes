@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Fixlet>
+		<Title>Lab - Low free space on system drive (&lt; 10 GB) - clean temp files</Title>
+		<Description><![CDATA[<P>ลบไฟล์ temp เก่ากว่า 7 วัน, Windows Update download cache, เทถังขยะ แล้วล้าง component store</P><P>Success criteria = original relevance: ถ้าลบแล้วยังไม่ถึง 10 GB จะขึ้น <B>Failed</B> แปลว่าต้องมีคนตามดูต่อ</P>]]></Description>
+		<Relevance><![CDATA[windows of operating system]]></Relevance>
+		<Relevance><![CDATA[free space of drive of system folder < 10 * 1024 * 1024 * 1024]]></Relevance>
+		<Category>Self Healing</Category>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[delete __createfile
+createfile until __EOF__
+$ErrorActionPreference = 'SilentlyContinue'
+$log = 'C:\Windows\Temp\bigfix-disk-cleanup.log'
+$before = (Get-PSDrive C).Free
+$cutoff = (Get-Date).AddDays(-7)
+$paths = @('C:\Windows\Temp\*', 'C:\Users\*\AppData\Local\Temp\*', 'C:\Windows\SoftwareDistribution\Download\*')
+foreach ($p in $paths) {{
+  Get-ChildItem $p -Recurse -Force | Where-Object {{ $_.LastWriteTime -lt $cutoff } | Remove-Item -Recurse -Force
+}
+Clear-RecycleBin -Force
+Start-Process -Wait -WindowStyle Hidden dism.exe -ArgumentList '/Online','/Cleanup-Image','/StartComponentCleanup'
+$after = (Get-PSDrive C).Free
+"$(Get-Date -Format s) freed {{0:N1} GB" -f (($after - $before) / 1GB) | Out-File -Append $log
+__EOF__
+
+delete cleanup.ps1
+move __createfile cleanup.ps1
+action uses wow64 redirection false
+waithidden "{pathname of native system folder}\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "{pathname of client folder of current site}\cleanup.ps1"
+]]></ActionScript>
+			<SuccessCriteria Option="OriginalRelevance"></SuccessCriteria>
+		</DefaultAction>
+	</Fixlet>
+</BES>

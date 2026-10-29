@@ -6,10 +6,17 @@
   gather_facts: false
 
   vars:
-    bes_root: "{{ playbook_dir }}/../../../bigfix/labs"
-    bes_files: "{{ query('ansible.builtin.fileglob', bes_root ~ '/*/*.bes') | sort }}"
+    bes_root: "{{ (playbook_dir ~ '/../../../bigfix/labs') | realpath }}"
+    bes_files: "{{ found.files | map(attribute='path') | sort }}"
 
   tasks:
+    - name: Find .bes files in every BigFix lab
+      ansible.builtin.find:
+        paths: "{{ bes_root }}"
+        patterns: "*.bes"
+        recurse: true
+      register: found
+
     - name: Fail if no content found
       ansible.builtin.assert:
         that: bes_files | length > 0
@@ -22,9 +29,9 @@
         label: "{{ item | basename }}"
       changed_when: false
 
-    - name: Import into custom site (fixlets endpoint accepts Fixlet, Task and Analysis)
+    - name: Import into custom site (endpoint depends on the content type)
       ansible.builtin.uri:
-        url: "{{ bigfix_url }}/api/fixlets/custom/{{ bigfix_custom_site | urlencode }}"
+        url: "{{ bigfix_url }}/api/{{ endpoint[kind] }}/custom/{{ bigfix_custom_site | urlencode }}"
         method: POST
         user: "{{ bigfix_user }}"
         password: "{{ bigfix_password }}"
@@ -36,8 +43,15 @@
         return_content: true
       loop: "{{ bes_files }}"
       loop_control:
-        label: "{{ item | basename }}"
+        label: "{{ kind }}: {{ item | basename }}"
       register: imported
+      vars:
+        kind: "{{ lookup('ansible.builtin.file', item) | regex_search('<(Fixlet|Task|Analysis|ComputerGroup)>', '\\1') | first }}"
+        endpoint:
+          Fixlet: fixlets
+          Task: tasks
+          Analysis: analyses
+          ComputerGroup: computergroups
 
     - name: Show new IDs
       ansible.builtin.debug:

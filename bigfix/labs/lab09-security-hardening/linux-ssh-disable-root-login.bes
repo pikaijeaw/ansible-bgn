@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Fixlet>
+		<Title>Lab - SSH permits root login (Linux, CIS 5.2.x)</Title>
+		<Description><![CDATA[<P>เพิ่ม drop-in <code>/etc/ssh/sshd_config.d/00-bigfix-hardening.conf</code> ตรวจ <code>sshd -t</code> ก่อน reload</P><P>ใช้กับ distro ที่ sshd_config มี Include sshd_config.d (RHEL 9, Ubuntu 22.04+)</P>]]></Description>
+		<Relevance><![CDATA[name of operating system as lowercase contains "linux"]]></Relevance>
+		<Relevance><![CDATA[exists file "/etc/ssh/sshd_config" whose (exists lines whose (it as lowercase starts with "include /etc/ssh/sshd_config.d") of it)]]></Relevance>
+		<Relevance><![CDATA[not exists file "/etc/ssh/sshd_config.d/00-bigfix-hardening.conf" whose (exists lines whose (it as lowercase = "permitrootlogin no") of it)]]></Relevance>
+		<Category>Security Hardening</Category>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[delete __createfile
+createfile until __EOF__
+# Managed by BigFix
+PermitRootLogin no
+MaxAuthTries 4
+X11Forwarding no
+__EOF__
+
+wait /bin/sh -c "install -m 600 '{pathname of client folder of current site}/__createfile' /etc/ssh/sshd_config.d/00-bigfix-hardening.conf && /usr/sbin/sshd -t && (systemctl reload sshd || systemctl reload ssh)"
+continue if {exit code of action = 0}
+]]></ActionScript>
+			<SuccessCriteria Option="OriginalRelevance"></SuccessCriteria>
+		</DefaultAction>
+	</Fixlet>
+</BES>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Analysis>
+		<Title>Lab - Hardware Inventory (Windows)</Title>
+		<Description><![CDATA[<P>ข้อมูล hardware สำหรับ asset management: ยี่ห้อ รุ่น serial CPU RAM disk IP BitLocker และเวลา boot ล่าสุด</P>]]></Description>
+		<Relevance><![CDATA[windows of operating system]]></Relevance>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<Property Name="Computer Name" ID="1" EvaluationPeriod="PT1H"><![CDATA[computer name]]></Property>
+		<Property Name="Operating System" ID="2" EvaluationPeriod="PT6H"><![CDATA[operating system as string]]></Property>
+		<Property Name="Manufacturer" ID="3" EvaluationPeriod="P1D"><![CDATA[string values of selects "Manufacturer from Win32_ComputerSystem" of wmi]]></Property>
+		<Property Name="Model" ID="4" EvaluationPeriod="P1D"><![CDATA[string values of selects "Model from Win32_ComputerSystem" of wmi]]></Property>
+		<Property Name="Serial Number" ID="5" EvaluationPeriod="P1D"><![CDATA[string values of selects "SerialNumber from Win32_BIOS" of wmi]]></Property>
+		<Property Name="CPU" ID="6" EvaluationPeriod="P1D"><![CDATA[brand string of main processor]]></Property>
+		<Property Name="Logical CPUs" ID="7" EvaluationPeriod="P1D"><![CDATA[number of processors]]></Property>
+		<Property Name="RAM (MB)" ID="8" EvaluationPeriod="P1D"><![CDATA[size of ram]]></Property>
+		<Property Name="C: Free (GB)" ID="9" EvaluationPeriod="PT1H"><![CDATA[free space of drive "C:" / (1024 * 1024 * 1024)]]></Property>
+		<Property Name="IPv4 Addresses" ID="10" EvaluationPeriod="PT1H"><![CDATA[addresses of ip interfaces whose (not loopback of it) of network]]></Property>
+		<Property Name="Last Boot Time" ID="11" EvaluationPeriod="PT1H"><![CDATA[boot time of operating system]]></Property>
+		<Property Name="BitLocker C: ProtectionStatus (1=On)" ID="12" EvaluationPeriod="P1D"><![CDATA[string values of selects "ProtectionStatus from Win32_EncryptableVolume where DriveLetter='C:'" of wmi "root\CIMV2\Security\MicrosoftVolumeEncryption"]]></Property>
+		<Property Name="BigFix Agent Version" ID="13" EvaluationPeriod="P1D"><![CDATA[version of client as string]]></Property>
+	</Analysis>
+</BES>

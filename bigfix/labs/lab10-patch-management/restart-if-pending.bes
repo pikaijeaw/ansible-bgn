@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Task>
+		<Title>Lab - Restart computers with a pending restart (maintenance window)</Title>
+		<Description><![CDATA[<P>ใช้หลัง patch: reboot เฉพาะเครื่องที่มี restart ค้างอยู่ (จาก BigFix action, Windows Update หรือ CBS)</P><P>ตอน Take Action ให้ตั้ง Constraints เป็นช่วง maintenance window และใช้ Offer/Post-Action แจ้งผู้ใช้</P>]]></Description>
+		<Relevance><![CDATA[windows of operating system]]></Relevance>
+		<Relevance><![CDATA[(pending restart) OR (exists key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired" of native registry) OR (exists key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending" of native registry)]]></Relevance>
+		<Category>Patch Management</Category>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[// Restart after a 5 minute countdown
+restart 300
+]]></ActionScript>
+			<SuccessCriteria Option="RunToCompletion"></SuccessCriteria>
+		</DefaultAction>
+	</Task>
+</BES>

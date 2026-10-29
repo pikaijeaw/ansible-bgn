@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Analysis>
+		<Title>Lab - Hardware Inventory (Linux)</Title>
+		<Description><![CDATA[<P>ข้อมูลพื้นฐานของเครื่อง Linux: distro kernel RAM disk / uptime IP</P>]]></Description>
+		<Relevance><![CDATA[name of operating system as lowercase contains "linux"]]></Relevance>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<Property Name="Computer Name" ID="1" EvaluationPeriod="PT1H"><![CDATA[computer name]]></Property>
+		<Property Name="Distribution" ID="2" EvaluationPeriod="P1D"><![CDATA[preceding text of last "%22" of following text of first "=%22" of lines whose (it starts with "PRETTY_NAME=") of file "/etc/os-release"]]></Property>
+		<Property Name="Kernel" ID="3" EvaluationPeriod="P1D"><![CDATA[release of operating system]]></Property>
+		<Property Name="RAM (MB)" ID="4" EvaluationPeriod="P1D"><![CDATA[size of ram]]></Property>
+		<Property Name="Root FS Free (GB)" ID="5" EvaluationPeriod="PT1H"><![CDATA[free space of filesystem "/" / (1024 * 1024 * 1024)]]></Property>
+		<Property Name="Uptime (days)" ID="6" EvaluationPeriod="PT1H"><![CDATA[(uptime of operating system / day)]]></Property>
+		<Property Name="IPv4 Addresses" ID="7" EvaluationPeriod="PT1H"><![CDATA[addresses of ip interfaces whose (not loopback of it) of network]]></Property>
+		<Property Name="BigFix Agent Version" ID="8" EvaluationPeriod="P1D"><![CDATA[version of client as string]]></Property>
+	</Analysis>
+</BES>

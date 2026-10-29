@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Task>
+		<Title>Lab - Install and enable Apache httpd (RHEL/Rocky)</Title>
+		<Description><![CDATA[<P>ติดตั้ง httpd ผ่าน dnf และเปิด service บนเครื่องตระกูล RHEL ที่ยังไม่มี</P>]]></Description>
+		<Relevance><![CDATA[name of operating system as lowercase contains "linux"]]></Relevance>
+		<Relevance><![CDATA[exists file "/etc/redhat-release"]]></Relevance>
+		<Relevance><![CDATA[not exists file "/usr/sbin/httpd"]]></Relevance>
+		<Category>Software Distribution</Category>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[wait /bin/sh -c "dnf -y install httpd && systemctl enable --now httpd"
+continue if {exit code of action = 0}
+]]></ActionScript>
+			<SuccessCriteria Option="RunToCompletion"></SuccessCriteria>
+		</DefaultAction>
+	</Task>
+</BES>
