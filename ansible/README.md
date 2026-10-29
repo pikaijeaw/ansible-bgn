@@ -15,7 +15,7 @@ lab ทั้งหมดรันบน **Docker** ด้วยเครื่�
 
 ## เริ่มต้น
 ต้องมี Docker Desktop (Windows/macOS) หรือ Docker Engine + compose plugin (Linux)
-บน Windows ให้ใช้ WSL2
+บน Windows ให้ใช้ WSL2 (ดูขั้นตอนและปัญหาที่พบบ่อยใน [docs/04-wsl-setup.md](../docs/04-wsl-setup.md))
 ```bash
 cd ansible/lab-env
 ./setup.sh                                  # สร้าง SSH key, build และ start ทุกเครื่อง

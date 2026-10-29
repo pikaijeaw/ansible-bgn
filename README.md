@@ -9,10 +9,12 @@ repo สำหรับเรียน **Ansible** และ **HCL BigFix** ต�
 | [docs/01-ansible-principles.md](docs/01-ansible-principles.md) | หลักการทำงานของ Ansible |
 | [docs/02-bigfix-principles.md](docs/02-bigfix-principles.md) | หลักการทำงานของ BigFix และการเปรียบเทียบกับ Ansible |
 | [docs/03-learning-plan.md](docs/03-learning-plan.md) | **ตารางการเรียนรู้ 12 สัปดาห์** ที่ผูกกับทุก lab |
+| [docs/04-wsl-setup.md](docs/04-wsl-setup.md) | ตั้ง lab บน Windows ด้วย WSL2 + ปัญหาที่อาจเจอ |
 | [ansible/README.md](ansible/README.md) | วิธีตั้ง lab (Docker) และรายการ Ansible lab |
 | [bigfix/README.md](bigfix/README.md) | วิธีตั้ง lab server และรายการ BigFix lab |
 
 ## Quick start (Ansible)
+บน Windows ให้ทำตาม [docs/04-wsl-setup.md](docs/04-wsl-setup.md) ก่อน
 ```bash
 git clone https://github.com/pikaijeaw/ansible-bgn.git
 cd ansible-bgn/ansible/lab-env
