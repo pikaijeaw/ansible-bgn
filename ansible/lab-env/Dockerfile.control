@@ -1,9 +1,12 @@
 # Control node: เครื่องที่ติดตั้ง Ansible และใช้สั่งงานเครื่องอื่น
-FROM python:3.12-slim
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive \
+    PATH=/opt/ansible/bin:$PATH
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openssh-client sshpass git curl jq less vim-tiny \
+ && apt-get install -y --no-install-recommends python3 python3-venv openssh-client sshpass git curl jq less vim-tiny ca-certificates \
  && apt-get clean && rm -rf /var/lib/apt/lists/* \
- && pip install --no-cache-dir "ansible>=11,<12" ansible-lint jmespath passlib pywinrm
+ && python3 -m venv /opt/ansible \
+ && /opt/ansible/bin/pip install --no-cache-dir "ansible>=11,<12" ansible-lint jmespath passlib pywinrm
 # แพ็กเกจ "ansible" (ตัวเต็ม) มี ansible-core + collections ยอดนิยมมาให้แล้ว
 # เช่น ansible.posix, community.general, community.mysql, community.crypto, ansible.windows
 COPY .ssh/id_ed25519 /root/.ssh/id_ed25519
