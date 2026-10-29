@@ -1,0 +1,81 @@
+---
+# Runbook: "Disk เต็ม" ทำอัตโนมัติและปลอดภัย (ไม่ลบไฟล์ที่ process ยังเปิดใช้อยู่)
+- name: Disk space remediation
+  hosts: "{{ target | default('linux') }}"
+  become: true
+
+  vars:
+    cleanup_log_dirs: [/var/log/company]
+    cleanup_older_than: 7d
+    cleanup_compress_larger_than: 50m
+    journal_max_size: 200M
+
+  tasks:
+    - name: Free space before
+      ansible.builtin.command: df --output=avail -m /var/log
+      register: before
+      changed_when: false
+
+    - name: Find rotated logs older than retention
+      ansible.builtin.find:
+        paths: "{{ cleanup_log_dirs }}"
+        patterns: ["*.log.*", "*.gz"]
+        age: "{{ cleanup_older_than }}"
+      register: old_logs
+
+    - name: Delete old rotated logs
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_logs.files }}"
+      loop_control:
+        label: "{{ item.path }} ({{ (item.size / 1048576) | round(1) }} MB)"
+
+    - name: Find oversized live logs
+      ansible.builtin.find:
+        paths: "{{ cleanup_log_dirs }}"
+        patterns: ["*.log"]
+        size: "{{ cleanup_compress_larger_than }}"
+      register: big_logs
+
+    - name: Archive then truncate oversized live logs (keeps file handle valid for the app)
+      ansible.builtin.shell: |
+        set -o pipefail
+        gzip -c {{ item.path | quote }} > {{ item.path | quote }}.$(date +%Y%m%d%H%M).gz
+        truncate -s 0 {{ item.path | quote }}
+      args:
+        executable: /bin/bash
+      loop: "{{ big_logs.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+      changed_when: true
+
+    - name: Vacuum systemd journal
+      ansible.builtin.command: "journalctl --vacuum-size={{ journal_max_size }}"
+      register: vacuum
+      changed_when: "'freed 0B' not in vacuum.stderr"
+
+    - name: Clean package manager cache
+      ansible.builtin.command: "{{ 'apt-get clean' if ansible_facts['os_family'] == 'Debian' else 'dnf clean all' }}"
+      changed_when: true
+
+    - name: Report deleted-but-still-open files (need service restart to free space)
+      ansible.builtin.shell: |
+        set -o pipefail
+        lsof -nP +L1 2>/dev/null | awk 'NR>1 {print $1, $2, $NF}' | sort -u || true
+      args:
+        executable: /bin/bash
+      register: open_deleted
+      changed_when: false
+
+    - name: Free space after
+      ansible.builtin.command: df --output=avail -m /var/log
+      register: after
+      changed_when: false
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg:
+          - "Deleted {{ old_logs.files | length }} old logs, archived {{ big_logs.files | length }} big logs"
+          - "Free /var/log: {{ before.stdout_lines[-1] | trim }} MB -> {{ after.stdout_lines[-1] | trim }} MB"
+          - "Deleted-but-open: {{ open_deleted.stdout_lines | default(['none'], true) }}"

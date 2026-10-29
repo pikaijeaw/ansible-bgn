@@ -1,0 +1,20 @@
+---
+# สร้างสถานการณ์จำลอง: log เก่าค้างเต็ม /var/log/company (ใช้ในแล็บเท่านั้น)
+- name: Simulate log pile-up
+  hosts: "{{ target | default('web01') }}"
+  become: true
+  tasks:
+    - name: Create old rotated logs (dated 30 days ago)
+      ansible.builtin.shell: |
+        for i in $(seq 1 20); do
+          f=/var/log/company/app.log.$i
+          head -c 5M /dev/urandom | base64 > "$f"
+          touch -d '30 days ago' "$f"
+        done
+      args:
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Create a huge live log file
+      ansible.builtin.command: fallocate -l 300M /var/log/company/app.log
+      changed_when: true

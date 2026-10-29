@@ -1,0 +1,76 @@
+---
+# Runbook: service ล่ม → เก็บหลักฐาน → restart → ตรวจ → แจ้งเตือน
+# ansible-playbook service-recovery.yml -e target=web -e service_name=nginx -e health_url=http://localhost/healthz
+- name: Auto-remediate a stopped service
+  hosts: "{{ target | default('web') }}"
+  become: true
+
+  vars:
+    service_name: nginx
+    health_url: ""
+    evidence_dir: "{{ playbook_dir }}/evidence"
+    webhook_url: ""          # เช่น Teams/Slack incoming webhook
+
+  tasks:
+    - name: Read service states
+      ansible.builtin.service_facts:
+
+    - name: Determine whether the service is down
+      ansible.builtin.set_fact:
+        svc_down: "{{ ansible_facts['services'][service_name ~ '.service']['state'] | default('missing') != 'running' }}"
+
+    - name: Remediate
+      when: svc_down | bool
+      block:
+        - name: Capture last logs before restart (root-cause evidence)
+          ansible.builtin.command: "journalctl -u {{ service_name }} -n 50 --no-pager"
+          register: svc_logs
+          changed_when: false
+
+        - name: Ensure evidence directory exists on control node
+          ansible.builtin.file:
+            path: "{{ evidence_dir }}"
+            state: directory
+            mode: "0755"
+          delegate_to: localhost
+          become: false
+
+        - name: Save evidence on control node
+          ansible.builtin.copy:
+            dest: "{{ evidence_dir }}/{{ inventory_hostname }}-{{ service_name }}-{{ now().strftime('%Y%m%d-%H%M%S') }}.log"
+            content: "{{ svc_logs.stdout }}\n"
+            mode: "0644"
+          delegate_to: localhost
+          become: false
+
+        - name: Restart service
+          ansible.builtin.service:
+            name: "{{ service_name }}"
+            state: restarted
+
+        - name: Health check after restart
+          ansible.builtin.uri:
+            url: "{{ health_url }}"
+          register: health
+          retries: 5
+          delay: 3
+          until: health.status == 200
+          when: health_url | length > 0
+
+        - name: Notify chat channel
+          ansible.builtin.uri:
+            url: "{{ webhook_url }}"
+            method: POST
+            body_format: json
+            body:
+              text: "[auto-remediation] {{ service_name }} on {{ inventory_hostname }} was down and has been restarted"
+          when: webhook_url | length > 0
+
+        - name: Result
+          ansible.builtin.debug:
+            msg: "RECOVERED {{ service_name }} on {{ inventory_hostname }}"
+
+      rescue:
+        - name: Escalate to on-call
+          ansible.builtin.fail:
+            msg: "Auto-remediation FAILED for {{ service_name }} on {{ inventory_hostname }} - page on-call engineer"
