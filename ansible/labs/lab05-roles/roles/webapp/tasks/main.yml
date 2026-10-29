@@ -1,0 +1,63 @@
+---
+- name: Apply pending nginx changes before deploying
+  ansible.builtin.meta: flush_handlers
+
+- name: Create releases directory
+  ansible.builtin.file:
+    path: "{{ webapp_base_dir }}/releases/{{ webapp_version }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy release files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ webapp_base_dir }}/releases/{{ webapp_version }}/{{ item.dest }}"
+    mode: "0644"
+  loop:
+    - { src: index.html.j2, dest: index.html }
+    - { src: version.txt.j2, dest: version.txt }
+
+- name: Read the release that is live right now
+  ansible.builtin.stat:
+    path: "{{ webapp_base_dir }}/current"
+  register: webapp_current
+
+- name: Remember previous release (used by rollback)
+  ansible.builtin.copy:
+    dest: "{{ webapp_base_dir }}/PREVIOUS"
+    content: "{{ webapp_current.stat.lnk_source | basename }}\n"
+    mode: "0644"
+  when:
+    - webapp_current.stat.islnk | default(false)
+    - webapp_current.stat.lnk_source | basename != webapp_version
+
+- name: Switch "current" symlink to the new release
+  ansible.builtin.file:
+    src: "{{ webapp_base_dir }}/releases/{{ webapp_version }}"
+    dest: "{{ webapp_base_dir }}/current"
+    state: link
+    force: true
+
+- name: Smoke test the new release on this host
+  ansible.builtin.uri:
+    url: "http://localhost/version.txt"
+    return_content: true
+  register: webapp_smoke
+  retries: 5
+  delay: 2
+  until: webapp_smoke.content | trim == webapp_version
+
+- name: List old releases
+  ansible.builtin.find:
+    paths: "{{ webapp_base_dir }}/releases"
+    file_type: directory
+  register: webapp_releases
+
+- name: Remove releases beyond the retention count
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ (webapp_releases.files | sort(attribute='mtime', reverse=true))[webapp_keep_releases:] }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when: item.path | basename != webapp_version

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Analysis>
+		<Title>Lab - BigFix Agent Health</Title>
+		<Description><![CDATA[<P>ข้อมูลสุขภาพของ agent: เวอร์ชัน, setting ที่ตั้งไว้, เวลาที่ boot และพื้นที่ disk ของโฟลเดอร์ agent</P>]]></Description>
+		<Relevance><![CDATA[true]]></Relevance>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<Property Name="Agent Version" ID="1" EvaluationPeriod="P1D"><![CDATA[version of client as string]]></Property>
+		<Property Name="Environment Setting" ID="2" EvaluationPeriod="PT1H"><![CDATA[if exists setting "Environment" of client then value of setting "Environment" of client else "not set"]]></Property>
+		<Property Name="WorkIdle / SleepIdle" ID="3" EvaluationPeriod="PT6H"><![CDATA[(if exists setting "_BESClient_Resource_WorkIdle" of client then value of setting "_BESClient_Resource_WorkIdle" of client else "default") & " / " & (if exists setting "_BESClient_Resource_SleepIdle" of client then value of setting "_BESClient_Resource_SleepIdle" of client else "default")]]></Property>
+		<Property Name="Uptime (hours)" ID="4" EvaluationPeriod="PT1H"><![CDATA[uptime of operating system / hour]]></Property>
+		<Property Name="Agent Folder Free Space (MB)" ID="5" EvaluationPeriod="PT6H"><![CDATA[free space of drive of parent folder of client folder of site "actionsite" / (1024 * 1024)]]></Property>
+	</Analysis>
+</BES>

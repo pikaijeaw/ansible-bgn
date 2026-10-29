@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ansible-lint:
+    name: Ansible lint + syntax check
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ansible
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: pip install "ansible>=11,<12" ansible-lint passlib
+
+      - name: Syntax check every playbook
+        run: ./scripts/syntax-check.sh
+
+      - name: ansible-lint (production profile)
+        run: ansible-lint
+
+  bigfix-content:
+    name: BigFix content validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate .bes files
+        run: python3 bigfix/scripts/validate_bes.py bigfix/labs
+
+      - name: Smoke test BigFix API mock
+        run: |
+          python3 ansible/lab-env/bigfix-mock/bigfix_mock.py &
+          sleep 2
+          curl -sf -u 'admin:BigFix123!' http://localhost:52311/api/login
+          curl -sf -u 'admin:BigFix123!' -G http://localhost:52311/api/query \
+            --data-urlencode 'output=json' --data-urlencode 'relevance=names of bes computers'

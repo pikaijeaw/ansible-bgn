@@ -1,0 +1,118 @@
+---
+# Lab 04: Templates + Handlers + config validation/rollback
+- name: Manage /etc/hosts and logrotate on all servers
+  hosts: linux
+  become: true
+  vars:
+    domain: lab.local
+    log_retention_days: 14
+
+  tasks:
+    - name: Render /etc/hosts from inventory
+      ansible.builtin.template:
+        src: templates/hosts.j2
+        dest: /etc/hosts
+        mode: "0644"
+        unsafe_writes: true   # /etc/hosts ใน container เป็น bind mount (บน VM จริงไม่ต้องใส่)
+
+    - name: Install logrotate
+      ansible.builtin.package:
+        name: logrotate
+        state: present
+
+    - name: Deploy logrotate policy for company logs
+      ansible.builtin.template:
+        src: templates/logrotate-app.j2
+        dest: /etc/logrotate.d/company-app
+        mode: "0644"
+
+- name: Configure nginx web servers
+  hosts: web
+  become: true
+  vars:
+    domain: lab.local
+    nginx_port: 80
+    nginx_default_server: true
+    nginx_client_max_body_size: 10m
+    web_root: /var/www/app
+    app_backend_ports: []
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+  tasks:
+    - name: Install nginx
+      ansible.builtin.package:
+        name: nginx
+        state: present
+
+    - name: Remove distro default site (Debian/Ubuntu)
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Reload nginx
+
+    - name: Create web root
+      ansible.builtin.file:
+        path: "{{ web_root }}"
+        state: directory
+        mode: "0755"
+
+    - name: Deploy index page
+      ansible.builtin.template:
+        src: templates/index.html.j2
+        dest: "{{ web_root }}/index.html"
+        mode: "0644"
+
+    - name: Deploy vhost and roll back if nginx rejects it
+      block:
+        - name: Deploy app vhost (keep a backup of the previous file)
+          ansible.builtin.template:
+            src: templates/app.conf.j2
+            dest: /etc/nginx/conf.d/app.conf
+            mode: "0644"
+            backup: true
+          register: vhost
+          notify: Reload nginx
+
+        - name: Validate nginx configuration
+          ansible.builtin.command: nginx -t
+          changed_when: false
+
+      rescue:
+        - name: Restore previous vhost
+          ansible.builtin.copy:
+            src: "{{ vhost.backup_file }}"
+            dest: /etc/nginx/conf.d/app.conf
+            remote_src: true
+            mode: "0644"
+          when: vhost.backup_file is defined
+
+        - name: Remove broken vhost (first deployment had no backup)
+          ansible.builtin.file:
+            path: /etc/nginx/conf.d/app.conf
+            state: absent
+          when: vhost.backup_file is not defined
+
+        - name: Stop the play for this host
+          ansible.builtin.fail:
+            msg: "nginx config invalid on {{ inventory_hostname }} - rolled back, nginx was not reloaded"
+
+    - name: Ensure nginx is running
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Flush handlers so the health check sees the new config
+      ansible.builtin.meta: flush_handlers
+
+    - name: Health check
+      ansible.builtin.uri:
+        url: "http://localhost:{{ nginx_port }}/healthz"
+        return_content: true
+      register: health
+      failed_when: "'ok' not in health.content"

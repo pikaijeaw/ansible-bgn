@@ -1,0 +1,3 @@
+# บังคับ LF เพื่อให้ script และ config ใช้ได้ใน Linux/WSL แม้จะ clone ด้วย Git for Windows
+* text=auto eol=lf
+*.bes text eol=lf

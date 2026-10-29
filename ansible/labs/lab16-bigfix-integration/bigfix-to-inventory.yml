@@ -1,0 +1,47 @@
+---
+# Lab 16.4: ใช้ BigFix เป็น source of truth สร้าง Ansible inventory
+# เครื่องไหนมี BigFix agent รายงานเข้ามา = เครื่องที่ Ansible ควรจัดการ
+- name: Build Ansible inventory from BigFix
+  hosts: localhost
+  gather_facts: false
+  vars:
+    rel_inventory: "(id of it, name of it, operating system of it, last report time of it as string) of bes computers"
+    out_file: "{{ playbook_dir }}/bigfix_inventory.yml"
+
+  tasks:
+    - name: Ask BigFix for all computers
+      ansible.builtin.uri:
+        url: "{{ bigfix_url }}/api/query?output=json&relevance={{ rel_inventory | urlencode }}"
+        user: "{{ bigfix_user }}"
+        password: "{{ bigfix_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ bigfix_validate_certs }}"
+      register: computers
+
+    - name: Write inventory grouped by OS
+      ansible.builtin.copy:
+        dest: "{{ out_file }}"
+        mode: "0644"
+        content: |
+          # generated from BigFix {{ now().strftime('%Y-%m-%d %H:%M') }} - do not edit
+          all:
+            children:
+              bigfix_linux:
+                hosts:
+          {% for c in computers.json.result if c[2] is match('Linux') %}
+                  {{ c[1] }}: { bigfix_id: {{ c[0] }} }
+          {% endfor %}
+              bigfix_windows:
+                hosts:
+          {% for c in computers.json.result if c[2] is match('Win') %}
+                  {{ c[1] }}: { bigfix_id: {{ c[0] }} }
+          {% endfor %}
+
+    - name: Show result
+      ansible.builtin.command: "ansible-inventory -i {{ out_file }} --graph"
+      changed_when: false
+      register: graph
+
+    - name: Print graph
+      ansible.builtin.debug:
+        var: graph.stdout_lines

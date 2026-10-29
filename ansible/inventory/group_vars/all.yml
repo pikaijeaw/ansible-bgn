@@ -1,0 +1,9 @@
+# ตัวแปรที่ทุกเครื่องใช้ร่วมกัน
+env_name: lab
+company: BGN Corp
+timezone: Asia/Bangkok
+admin_email: ops@example.com
+
+# Lab เท่านั้น: container ใช้ kernel ร่วมกับ host ค่า boot_id จึงไม่เปลี่ยนเมื่อ "reboot"
+# ใช้เวลาเริ่มของ PID 1 (systemd ของ container) แทน (บน VM จริงให้ลบบรรทัดนี้)
+lab_boot_time_command: "cut -d' ' -f22 /proc/1/stat"

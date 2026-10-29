@@ -1,0 +1,63 @@
+# Lab environment สำหรับฝึก Ansible
+#   control : control node (มี Ansible ติดตั้งไว้แล้ว)
+#   lb01    : load balancer (Ubuntu)        -> เปิดดูผ่าน http://localhost:8080
+#   web01/02: web servers (Ubuntu)
+#   db01    : database server (Rocky Linux 9 / ตระกูล RHEL)
+#   bigfix-mock : BigFix REST API จำลอง สำหรับ lab integration
+x-node: &node
+  privileged: true
+  restart: unless-stopped   # ให้ "reboot" ใน lab patching ทำงานเหมือนเครื่องจริง
+  cgroup: host
+  volumes:
+    - /sys/fs/cgroup:/sys/fs/cgroup:rw
+  tmpfs:
+    - /run
+    - /run/lock
+  networks: [labnet]
+
+services:
+  control:
+    build: { context: ., dockerfile: Dockerfile.control }
+    container_name: control
+    hostname: control
+    volumes:
+      - ../..:/work
+    networks: [labnet]
+
+  lb01:
+    <<: *node
+    build: { context: ., dockerfile: Dockerfile.ubuntu }
+    container_name: lb01
+    hostname: lb01
+    ports: ["8080:80", "8404:8404"]
+
+  web01:
+    <<: *node
+    build: { context: ., dockerfile: Dockerfile.ubuntu }
+    container_name: web01
+    hostname: web01
+
+  web02:
+    <<: *node
+    build: { context: ., dockerfile: Dockerfile.ubuntu }
+    container_name: web02
+    hostname: web02
+
+  db01:
+    <<: *node
+    build: { context: ., dockerfile: Dockerfile.rocky }
+    container_name: db01
+    hostname: db01
+
+  bigfix-mock:
+    image: python:3.12-slim
+    container_name: bigfix-mock
+    hostname: bigfix
+    command: ["python", "/app/bigfix_mock.py"]
+    volumes:
+      - ./bigfix-mock:/app:ro
+    ports: ["52311:52311"]
+    networks: [labnet]
+
+networks:
+  labnet: {}

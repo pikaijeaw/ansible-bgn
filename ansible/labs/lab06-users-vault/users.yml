@@ -1,0 +1,82 @@
+---
+# Lab 06: จัดการ user/group/sudo/SSH key ทุกเครื่องจากที่เดียว โดยเก็บรหัสผ่านไว้ใน Ansible Vault
+- name: Manage operating system users
+  hosts: linux
+  become: true
+
+  tasks:
+    - name: Create groups
+      ansible.builtin.group:
+        name: "{{ item.name }}"
+        state: present
+      loop: "{{ ops_groups }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Grant sudo rules per group (validated with visudo)
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ item.name }}"
+        content: "%{{ item.name }} {{ item.sudo }}\n"
+        mode: "0440"
+        validate: visudo -cf %s
+      loop: "{{ ops_groups }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Create or update active users
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        comment: "{{ item.comment }}"
+        groups: "{{ item.groups }}"
+        append: false
+        shell: /bin/bash
+        password: "{{ vault_user_passwords[item.name] | password_hash('sha512') }}"
+        update_password: on_create
+        state: present
+      loop: "{{ ops_users | selectattr('state', 'equalto', 'present') }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: created_users
+      no_log: true            # ไม่ให้ password hash โผล่ใน log
+
+    - name: Force password change at first login for new users
+      ansible.builtin.command: "chage -d 0 {{ item.item.name }}"
+      loop: "{{ created_users.results | selectattr('changed') | selectattr('create_home', 'defined') }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+      changed_when: true
+
+    - name: Install SSH public keys (exclusive = remove keys not listed)
+      ansible.posix.authorized_key:
+        user: "{{ item.name }}"
+        key: "{{ lookup('ansible.builtin.file', 'files/keys/' ~ item.name ~ '.pub') }}"
+        exclusive: true
+        state: present
+      loop: "{{ ops_users | selectattr('state', 'equalto', 'present') }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Lock and remove departed users
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        state: absent
+        remove: true
+      loop: "{{ ops_users | selectattr('state', 'equalto', 'absent') }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Find accounts with UID >= 1000 that are not managed by Ansible
+      ansible.builtin.shell: |
+        set -o pipefail
+        getent passwd | awk -F: '$3 >= 1000 && $3 < 65534 {print $1}'
+      args:
+        executable: /bin/bash
+      register: local_accounts
+      changed_when: false
+
+    - name: Report unmanaged accounts (audit finding)
+      ansible.builtin.debug:
+        msg: "UNMANAGED ACCOUNTS on {{ inventory_hostname }}: {{ unmanaged }}"
+      vars:
+        unmanaged: "{{ local_accounts.stdout_lines | difference(ops_users | map(attribute='name')) | difference(['ansible', 'ubuntu']) }}"
+      when: unmanaged | length > 0

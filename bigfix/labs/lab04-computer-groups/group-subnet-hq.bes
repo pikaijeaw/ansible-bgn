@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<ComputerGroup>
+		<Title>Lab - Location - HQ 10.10.0.0/16</Title>
+		<Domain>BESC</Domain>
+		<JoinByIntersection>true</JoinByIntersection>
+		<SearchComponentRelevance Comparison="IsTrue">
+			<Relevance><![CDATA[exists addresses whose (it as string starts with "10.10.") of ip interfaces of network]]></Relevance>
+		</SearchComponentRelevance>
+	</ComputerGroup>
+</BES>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Task>
+		<Title>Lab - Install 7-Zip 24.08 (x64 MSI)</Title>
+		<Description><![CDATA[<P>ติดตั้ง 7-Zip แบบ silent ด้วย MSI เฉพาะเครื่องที่ยังไม่มีหรือเวอร์ชันต่ำกว่า 24.08</P><P><B>ก่อนใช้:</B> แก้ค่า sha1 / sha256 / size ใน prefetch ให้ตรงกับไฟล์จริง (ใช้ <code>certutil -hashfile 7z2408-x64.msi SHA256</code> หรือ Software Distribution wizard)</P>]]></Description>
+		<Relevance><![CDATA[windows of operating system]]></Relevance>
+		<Relevance><![CDATA[x64 of operating system]]></Relevance>
+		<Relevance><![CDATA[not exists keys whose (exists value "DisplayName" whose (it as string as lowercase starts with "7-zip") of it AND exists value "DisplayVersion" whose (it as string as version >= "24.08" as version) of it) of keys "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" of (x64 registries; x32 registries)]]></Relevance>
+		<Category>Software Distribution</Category>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[// 1) Download - cached on relays and verified by hash
+prefetch 7z2408-x64.msi sha1:0000000000000000000000000000000000000000 size:1 https://www.7-zip.org/a/7z2408-x64.msi sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+// 2) Silent install with verbose MSI log
+waithidden msiexec.exe /i "__Download\7z2408-x64.msi" /qn /norestart /l*v "{pathname of windows folder}\Temp\7zip-install.log"
+
+// 3) 0 = success, 3010 = success but reboot required
+continue if {exit code of action = 0 OR exit code of action = 3010}
+]]></ActionScript>
+			<SuccessCriteria Option="RunToCompletion"></SuccessCriteria>
+		</DefaultAction>
+	</Task>
+</BES>

@@ -1,0 +1,47 @@
+---
+# รายงาน package ที่รออัปเดต (ใช้ก่อน CAB / change meeting)
+- name: Pending update report
+  hosts: linux
+  become: true
+  gather_facts: true
+  tasks:
+    - name: List upgradable packages (Debian)
+      ansible.builtin.shell: |
+        set -o pipefail
+        apt-get -qq update || echo "WARN: apt-get update failed, using cached package lists" >&2
+        apt list --upgradable 2>/dev/null | tail -n +2
+      args:
+        executable: /bin/bash
+      register: deb_updates
+      changed_when: false
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: List upgradable packages (RHEL)
+      ansible.builtin.command: dnf -q check-update
+      register: rpm_updates
+      changed_when: false
+      failed_when: rpm_updates.rc not in [0, 100]
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Build per-host summary
+      ansible.builtin.set_fact:
+        pending: >-
+          {{ (deb_updates.stdout_lines if deb_updates is not skipped else rpm_updates.stdout_lines)
+             | default([]) | select | list }}
+
+    - name: Save report on control node
+      ansible.builtin.copy:
+        dest: "{{ playbook_dir }}/pending-updates.txt"
+        mode: "0644"
+        content: |
+          Pending updates report - {{ now().strftime('%Y-%m-%d %H:%M') }}
+          {% for h in ansible_play_hosts | sort %}
+          {% set f = hostvars[h]['ansible_facts'] %}
+          == {{ h }} ({{ f['distribution'] }} {{ f['distribution_version'] }}): {{ hostvars[h]['pending'] | length }} packages
+          {% for p in hostvars[h]['pending'][:15] %}
+             {{ p }}
+          {% endfor %}
+          {% endfor %}
+      delegate_to: localhost
+      become: false
+      run_once: true

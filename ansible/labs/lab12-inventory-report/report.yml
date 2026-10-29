@@ -1,0 +1,96 @@
+---
+# Lab 12: Asset inventory report (CSV / HTML / JSON) จาก facts
+- name: Collect inventory data
+  hosts: linux
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Gather installed packages
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Read free space on /
+      ansible.builtin.command: df --output=avail -BG /
+      register: df_root
+      changed_when: false
+
+    - name: List listening TCP ports
+      ansible.builtin.shell: |
+        set -o pipefail
+        ss -Htln | awk '{print $4}' | sed -E 's/.*:([0-9]+)$/\1/' | sort -un
+      args:
+        executable: /bin/bash
+      register: ports
+      changed_when: false
+
+    - name: Find last package change (Debian dpkg.log / RHEL rpm)
+      ansible.builtin.shell: |
+        set -o pipefail
+        if [ -f /var/log/dpkg.log ]; then
+          grep -E ' (upgrade|install) ' /var/log/dpkg.log | tail -1 | cut -d' ' -f1
+        else
+          rpm -qa --last | head -1 | awk '{print $2, $3, $4, $5}'
+        fi
+      args:
+        executable: /bin/bash
+      register: last_patch_cmd
+      changed_when: false
+
+    - name: Store per-host values
+      ansible.builtin.set_fact:
+        pkg_count: "{{ ansible_facts['packages'] | length }}"
+        disk_free_gb: "{{ df_root.stdout_lines[-1] | trim | regex_replace('G$', '') | int }}"
+        listen_ports: "{{ ports.stdout_lines }}"
+        last_patch: "{{ last_patch_cmd.stdout | default('unknown', true) }}"
+
+- name: Render reports on the control node
+  hosts: localhost
+  gather_facts: false
+  vars:
+    report_dir: "{{ playbook_dir }}/reports"
+    report_date: "{{ now().strftime('%Y-%m-%d') }}"
+    low_disk_gb: 10
+    report_hosts: "{{ groups['linux'] }}"
+
+  tasks:
+    - name: Create report directory
+      ansible.builtin.file:
+        path: "{{ report_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Write CSV and HTML
+      ansible.builtin.template:
+        src: "templates/inventory.{{ item }}.j2"
+        dest: "{{ report_dir }}/inventory-{{ report_date }}.{{ item }}"
+        mode: "0644"
+      loop: [csv, html]
+
+    - name: Build one record per host
+      ansible.builtin.set_fact:
+        report_rows: "{{ report_rows | default([]) + [record] }}"
+      vars:
+        f: "{{ hostvars[item]['ansible_facts'] }}"
+        record:
+          hostname: "{{ item }}"
+          groups: "{{ hostvars[item]['group_names'] }}"
+          os: "{{ f['distribution'] }} {{ f['distribution_version'] }}"
+          ip: "{{ f['default_ipv4']['address'] | default('') }}"
+          vcpu: "{{ f['processor_vcpus'] }}"
+          memory_mb: "{{ f['memtotal_mb'] }}"
+          disk_free_gb: "{{ hostvars[item]['disk_free_gb'] }}"
+          packages: "{{ hostvars[item]['pkg_count'] }}"
+          listening_ports: "{{ hostvars[item]['listen_ports'] }}"
+          last_patch: "{{ hostvars[item]['last_patch'] }}"
+      loop: "{{ report_hosts }}"
+
+    - name: Write JSON (for CMDB / API import)
+      ansible.builtin.copy:
+        dest: "{{ report_dir }}/inventory-{{ report_date }}.json"
+        mode: "0644"
+        content: "{{ report_rows | to_nice_json }}"
+
+    - name: Done
+      ansible.builtin.debug:
+        msg: "Reports written to {{ report_dir }}"

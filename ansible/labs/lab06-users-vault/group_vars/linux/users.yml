@@ -1,0 +1,22 @@
+---
+# รายชื่อผู้ใช้ (single source of truth) แก้ไฟล์นี้แล้วรัน playbook = onboarding/offboarding
+# ข้อมูลลับ (password) อยู่ในไฟล์ vault.yml ที่เข้ารหัสไว้
+ops_groups:
+  - name: ops-admins
+    sudo: "ALL=(ALL) NOPASSWD: ALL"
+  - name: developers
+    sudo: "ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx, /usr/bin/journalctl"
+
+ops_users:
+  - name: somchai
+    comment: "Somchai J. - System Admin"
+    groups: [ops-admins]
+    state: present
+  - name: suda
+    comment: "Suda K. - Developer"
+    groups: [developers]
+    state: present
+  - name: niran
+    comment: "Niran P. - resigned 2026-10"
+    groups: []
+    state: absent          # offboarding: ลบ user + home + key

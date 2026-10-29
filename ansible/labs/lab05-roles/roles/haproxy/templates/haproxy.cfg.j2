@@ -1,0 +1,35 @@
+# {{ ansible_managed }}
+global
+    log /dev/log local0
+    stats socket {{ haproxy_socket }} mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+
+frontend fe_web
+    bind *:{{ haproxy_frontend_port }}
+    default_backend be_web
+
+backend be_web
+    balance roundrobin
+    option httpchk GET /healthz
+    http-check expect status 200
+{% for host in groups[haproxy_backend_group] %}
+    server {{ host }} {{ hostvars[host]['ansible_facts']['default_ipv4']['address'] | default(host) }}:{{ haproxy_backend_port }} check inter 2s fall 2 rise 2
+{% endfor %}
+
+listen stats
+    bind *:{{ haproxy_stats_port }}
+    stats enable
+    stats uri /
+    stats refresh 5s

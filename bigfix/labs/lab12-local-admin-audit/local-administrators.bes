@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Analysis>
+		<Title>Lab - Local Administrators members</Title>
+		<Description><![CDATA[<P>ดูว่าแต่ละเครื่องมีใครอยู่ในกลุ่ม Administrators (ใช้ทำ access review)</P>]]></Description>
+		<Relevance><![CDATA[windows of operating system]]></Relevance>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<Property Name="Local Administrators" ID="1" EvaluationPeriod="PT6H"><![CDATA[names of members of local group "Administrators"]]></Property>
+		<Property Name="Local Admin Count" ID="2" EvaluationPeriod="PT6H"><![CDATA[number of members of local group "Administrators"]]></Property>
+		<Property Name="Enabled Local Users" ID="3" EvaluationPeriod="PT6H"><![CDATA[names of local users whose (not account disabled flag of it)]]></Property>
+	</Analysis>
+</BES>

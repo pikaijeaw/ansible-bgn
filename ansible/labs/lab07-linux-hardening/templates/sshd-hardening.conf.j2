@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+# sshd ใช้ค่าแรกที่เจอ ไฟล์นี้จึงตั้งชื่อขึ้นต้นด้วย 00- ให้ถูกอ่านก่อนไฟล์อื่น
+PermitRootLogin {{ ssh_permit_root_login }}
+PasswordAuthentication {{ 'yes' if ssh_password_authentication else 'no' }}
+PermitEmptyPasswords no
+MaxAuthTries {{ ssh_max_auth_tries }}
+LoginGraceTime 60
+X11Forwarding no
+AllowTcpForwarding no
+ClientAliveInterval {{ ssh_client_alive_interval }}
+ClientAliveCountMax 2
+Banner /etc/issue.net
+LogLevel VERBOSE

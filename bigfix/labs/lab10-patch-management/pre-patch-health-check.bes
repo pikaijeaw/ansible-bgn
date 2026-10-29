@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Task>
+		<Title>Lab - Pre-patch check: free disk &gt;= 10 GB and no pending restart</Title>
+		<Description><![CDATA[<P>ใส่เป็น component แรกของ Baseline: ถ้าไม่ผ่าน action จะ fail และ component ถัดไปจะไม่ทำงาน (เมื่อตั้ง Baseline ให้หยุดเมื่อ component fail)</P>]]></Description>
+		<Relevance><![CDATA[windows of operating system]]></Relevance>
+		<Category>Patch Management</Category>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[continue if {free space of drive of system folder >= 10 * 1024 * 1024 * 1024}
+continue if {not pending restart}
+]]></ActionScript>
+			<SuccessCriteria Option="RunToCompletion"></SuccessCriteria>
+		</DefaultAction>
+	</Task>
+</BES>

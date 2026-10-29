@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  role_name: haproxy
+  author: ops-team
+  description: HAProxy load balancer in front of the web group
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+dependencies: []

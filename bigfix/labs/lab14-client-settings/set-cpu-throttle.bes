@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Task>
+		<Title>Lab - Limit BigFix agent CPU usage (WorkIdle/SleepIdle)</Title>
+		<Description><![CDATA[<P>ลด CPU ที่ agent ใช้บนเครื่องที่ทำงานหนัก เช่น database server: ทำงาน 10ms พัก 480ms (ประมาณ 2%)</P>]]></Description>
+		<Relevance><![CDATA[true]]></Relevance>
+		<Category>BigFix Administration</Category>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[setting "_BESClient_Resource_WorkIdle"="10" on "{parameter "action issue date" of action}" for client
+setting "_BESClient_Resource_SleepIdle"="480" on "{parameter "action issue date" of action}" for client
+]]></ActionScript>
+			<SuccessCriteria Option="RunToCompletion"></SuccessCriteria>
+		</DefaultAction>
+	</Task>
+</BES>

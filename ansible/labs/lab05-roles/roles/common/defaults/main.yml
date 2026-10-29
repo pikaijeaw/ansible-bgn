@@ -1,0 +1,5 @@
+---
+common_packages: [curl, wget, tar, rsync, less, lsof, unzip, logrotate]
+common_timezone: "{{ timezone | default('UTC') }}"
+common_domain: lab.local
+common_motd_contact: "{{ admin_email | default('ops@example.com') }}"

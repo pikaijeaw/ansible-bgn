@@ -1,0 +1,48 @@
+---
+# Lab 16.1: ถาม BigFix ด้วย Session Relevance ผ่าน REST API
+- name: Query BigFix
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    rel_inventory: "(id of it, name of it, operating system of it, last report time of it as string) of bes computers"
+    rel_stale: >-
+      (name of it, last report time of it as string) of bes computers
+      whose (last report time of it < now - 7 * day)
+
+  tasks:
+    - name: Login check
+      ansible.builtin.uri:
+        url: "{{ bigfix_url }}/api/login"
+        user: "{{ bigfix_user }}"
+        password: "{{ bigfix_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ bigfix_validate_certs }}"
+        return_content: true
+      register: login
+
+    - name: Get computer inventory (JSON output)
+      ansible.builtin.uri:
+        url: "{{ bigfix_url }}/api/query?output=json&relevance={{ rel_inventory | urlencode }}"
+        user: "{{ bigfix_user }}"
+        password: "{{ bigfix_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ bigfix_validate_certs }}"
+      register: inventory
+
+    - name: Print inventory
+      ansible.builtin.debug:
+        msg: "{{ inventory.json.result | map('join', ' | ') | list }}"
+
+    - name: Find agents that have not reported for 7 days
+      ansible.builtin.uri:
+        url: "{{ bigfix_url }}/api/query?output=json&relevance={{ rel_stale | urlencode }}"
+        user: "{{ bigfix_user }}"
+        password: "{{ bigfix_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ bigfix_validate_certs }}"
+      register: stale
+
+    - name: Report stale agents (ต้องตามไปดูว่าเครื่องปิด, agent พัง หรือเครื่องถูก decommission)
+      ansible.builtin.debug:
+        msg: "STALE: {{ stale.json.result | map('first') | list }}"

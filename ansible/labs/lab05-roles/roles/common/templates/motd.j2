@@ -1,0 +1,5 @@
+=========================================================
+ {{ company | default('Company') }} :: {{ inventory_hostname }} :: {{ env_name | default('') | upper }}
+ Roles: {{ group_names | join(', ') }}
+ Managed by Ansible - contact {{ common_motd_contact }}
+=========================================================

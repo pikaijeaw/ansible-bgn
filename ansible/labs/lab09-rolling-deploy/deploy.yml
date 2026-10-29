@@ -1,0 +1,55 @@
+---
+# Lab 09: Zero-downtime rolling deployment ผ่าน HAProxy
+# ansible-playbook labs/lab09-rolling-deploy/deploy.yml -e webapp_version=2.0.0 -e webapp_color='#1565c0'
+- name: Validate input
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Require a semantic version
+      ansible.builtin.assert:
+        that: webapp_version is defined and webapp_version is match('^\d+\.\d+\.\d+$')
+        fail_msg: "ต้องระบุ -e webapp_version=X.Y.Z"
+
+- name: Rolling deploy to web tier
+  hosts: web
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  force_handlers: true
+
+  pre_tasks:
+    - name: Drain from load balancer
+      ansible.builtin.include_tasks: tasks/lb_member.yml
+      vars:
+        lb_state: disabled
+
+  roles:
+    - role: webapp
+
+  post_tasks:
+    - name: Verify new version is served by this host
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}/version.txt"
+        return_content: true
+      register: served
+      delegate_to: localhost
+      become: false
+      failed_when: served.content | trim != webapp_version
+
+    - name: Return to load balancer
+      ansible.builtin.include_tasks: tasks/lb_member.yml
+      vars:
+        lb_state: enabled
+
+- name: Post-deploy verification through the load balancer
+  hosts: lb
+  gather_facts: false
+  tasks:
+    - name: Every request through LB must return the new version
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}/version.txt"
+        return_content: true
+      register: via_lb
+      delegate_to: localhost
+      loop: "{{ range(6) | list }}"
+      failed_when: via_lb.content | trim != webapp_version

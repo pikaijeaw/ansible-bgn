@@ -1,0 +1,9 @@
+---
+# การเชื่อมต่อ BigFix REST API
+# lab ใช้ mock ใน docker-compose (http://bigfix-mock:52311)
+# ของจริงเป็น https://<bigfix-server>:52311 และควรใช้ cert จริงแล้วตั้ง bigfix_validate_certs: true
+bigfix_url: "{{ lookup('ansible.builtin.env', 'BIGFIX_URL') | default('http://bigfix-mock:52311', true) }}"
+bigfix_user: admin
+bigfix_password: "{{ vault_bigfix_password | default('BigFix123!') }}"
+bigfix_validate_certs: false
+bigfix_custom_site: Lab-Automation

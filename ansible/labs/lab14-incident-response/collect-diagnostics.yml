@@ -1,0 +1,55 @@
+---
+# เก็บ diagnostic bundle ส่งให้ vendor support / ใช้ทำ postmortem
+- name: Collect diagnostic bundle
+  hosts: "{{ target | default('linux') }}"
+  become: true
+  vars:
+    bundle_dir: "/tmp/diag-{{ inventory_hostname }}"
+    local_dir: "{{ playbook_dir }}/evidence"
+    diag_commands:
+      uptime: uptime
+      os-release: cat /etc/os-release
+      df: df -hT
+      free: free -m
+      top-cpu: ps aux --sort=-%cpu
+      top-mem: ps aux --sort=-%mem
+      listening: ss -tulpn
+      connections: ss -tan
+      failed-units: systemctl --failed --no-pager
+      journal-errors: journalctl -p err -n 300 --no-pager
+      last-logins: last -n 30
+      routes: ip route
+      dmesg: dmesg -T
+
+  tasks:
+    - name: Create bundle directory
+      ansible.builtin.file:
+        path: "{{ bundle_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Run diagnostic commands
+      ansible.builtin.shell: "{{ item.value }} > {{ bundle_dir }}/{{ item.key }}.txt 2>&1 || true"
+      loop: "{{ diag_commands | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+      changed_when: false
+
+    - name: Archive bundle
+      community.general.archive:
+        path: "{{ bundle_dir }}"
+        dest: "{{ bundle_dir }}.tar.gz"
+        format: gz
+        mode: "0600"
+
+    - name: Download bundle
+      ansible.builtin.fetch:
+        src: "{{ bundle_dir }}.tar.gz"
+        dest: "{{ local_dir }}/"
+        flat: true
+
+    - name: Clean up on host
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop: ["{{ bundle_dir }}", "{{ bundle_dir }}.tar.gz"]

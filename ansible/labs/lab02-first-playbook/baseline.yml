@@ -1,0 +1,58 @@
+---
+# Lab 02: Server Baseline ที่ทุกเครื่องใหม่ต้องมี (Day-1 setup)
+- name: Apply server baseline
+  hosts: linux
+  become: true
+
+  vars:
+    baseline_packages:
+      - curl
+      - wget
+      - tar
+      - rsync
+      - less
+      - lsof
+      - unzip
+
+  tasks:
+    - name: Refresh apt cache (Debian/Ubuntu only)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install baseline packages
+      ansible.builtin.package:
+        name: "{{ baseline_packages }}"
+        state: present
+
+    - name: Set timezone
+      community.general.timezone:
+        name: "{{ timezone }}"
+
+    - name: Create standard directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - /opt/scripts
+        - /opt/backup
+        - /var/log/company
+
+    - name: Deploy message of the day
+      ansible.builtin.copy:
+        dest: /etc/motd
+        mode: "0644"
+        content: |
+          ==========================================================
+           {{ company }} - {{ inventory_hostname }} ({{ env_name | upper }})
+           Managed by Ansible - manual changes will be overwritten
+           Contact: {{ admin_email }}
+          ==========================================================
+
+    - name: Show summary
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} runs {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"

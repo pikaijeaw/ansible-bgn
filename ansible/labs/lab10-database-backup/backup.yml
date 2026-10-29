@@ -1,0 +1,100 @@
+---
+# Lab 10: ติดตั้ง MariaDB + ตั้ง backup อัตโนมัติ + ดึง backup กลับมาเก็บนอกเครื่อง
+- name: Database server with automated backups
+  hosts: db
+  become: true
+
+  vars:
+    app_db_name: appdb
+    app_db_user: app
+    app_db_password: "{{ vault_app_db_password | default('App-Pass-2026!') }}"   # งานจริงเก็บใน Vault (lab06)
+    backup_dir: /opt/backup/mysql
+    backup_retention_days: 7
+    backup_cron_hour: "1"
+    backup_cron_minute: "30"
+    offsite_dir: "{{ playbook_dir }}/backups"
+
+  tasks:
+    - name: Load OS variables
+      ansible.builtin.include_vars: "{{ ansible_facts['os_family'] }}.yml"
+
+    - name: Install MariaDB
+      ansible.builtin.package:
+        name: "{{ db_packages }}"
+        state: present
+
+    - name: Start MariaDB
+      ansible.builtin.service:
+        name: "{{ db_service }}"
+        state: started
+        enabled: true
+
+    - name: Create application database
+      community.mysql.mysql_db:
+        name: "{{ app_db_name }}"
+        state: present
+        login_unix_socket: "{{ db_socket }}"
+
+    - name: Create application user (least privilege)
+      community.mysql.mysql_user:
+        name: "{{ app_db_user }}"
+        host: "%"
+        password: "{{ app_db_password }}"
+        priv: "{{ app_db_name }}.*:SELECT,INSERT,UPDATE,DELETE"
+        state: present
+        login_unix_socket: "{{ db_socket }}"
+      no_log: true
+
+    - name: Seed sample data
+      community.mysql.mysql_query:
+        login_db: "{{ app_db_name }}"
+        login_unix_socket: "{{ db_socket }}"
+        query:
+          - CREATE TABLE IF NOT EXISTS customers (id INT PRIMARY KEY, name VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+          - INSERT IGNORE INTO customers (id, name) VALUES (1, 'Acme Co'), (2, 'Siam Trading'), (3, 'Chiang Mai Coffee')
+      changed_when: false
+
+    - name: Create backup directory
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0700"
+      loop: [/opt/scripts, "{{ backup_dir }}", /var/log/company]
+
+    - name: Deploy backup script
+      ansible.builtin.template:
+        src: templates/db_backup.sh.j2
+        dest: /opt/scripts/db_backup.sh
+        mode: "0750"
+
+    - name: Schedule nightly backup
+      ansible.builtin.cron:
+        name: nightly mariadb backup
+        minute: "{{ backup_cron_minute }}"
+        hour: "{{ backup_cron_hour }}"
+        job: /opt/scripts/db_backup.sh >/dev/null 2>&1
+        user: root
+
+    - name: Run a backup now
+      ansible.builtin.command: /opt/scripts/db_backup.sh
+      register: backup_run
+      changed_when: true
+
+    - name: Show backup output
+      ansible.builtin.debug:
+        var: backup_run.stdout_lines
+
+    - name: Find files of the latest backup
+      ansible.builtin.find:
+        paths: "{{ backup_dir }}/latest/"
+        patterns: "*.sql.gz"
+      register: latest_files
+
+    - name: Copy latest backup off the server (3-2-1 rule)
+      ansible.builtin.fetch:
+        src: "{{ item.path }}"
+        dest: "{{ offsite_dir }}/{{ inventory_hostname }}/"
+        flat: true
+      loop: "{{ latest_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"

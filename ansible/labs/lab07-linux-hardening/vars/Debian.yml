@@ -1,0 +1,3 @@
+---
+ssh_service: ssh
+insecure_packages: [telnet, rsh-client, talk, nis]

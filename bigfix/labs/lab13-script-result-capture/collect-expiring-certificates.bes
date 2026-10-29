@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Task>
+		<Title>Lab - Collect certificates expiring within 30 days (writes result file)</Title>
+		<Description><![CDATA[<P>รัน PowerShell แล้วเขียนผลลงไฟล์ จากนั้น Analysis ในโฟลเดอร์เดียวกันจะอ่านไฟล์นั้นกลับขึ้น Console</P><P>รูปแบบนี้ใช้กับข้อมูลที่ relevance อ่านเองไม่ได้ ตั้งเป็น policy action ให้รันซ้ำทุกวัน</P>]]></Description>
+		<Relevance><![CDATA[windows of operating system]]></Relevance>
+		<Category>Inventory</Category>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[delete __createfile
+createfile until __EOF__
+$out = 'C:\ProgramData\BigFixLab\cert-expiry.txt'
+New-Item -ItemType Directory -Force -Path (Split-Path $out) | Out-Null
+$limit = (Get-Date).AddDays(30)
+$rows = Get-ChildItem Cert:\LocalMachine\My | Where-Object {{ $_.NotAfter -lt $limit } |
+  ForEach-Object {{ '{{0}|{{1}|{{2:yyyy-MM-dd}' -f $_.Subject, $_.Thumbprint, $_.NotAfter }
+if (-not $rows) {{ $rows = 'NONE' }
+$rows | Set-Content -Encoding ASCII $out
+__EOF__
+
+delete certs.ps1
+move __createfile certs.ps1
+action uses wow64 redirection false
+waithidden "{pathname of native system folder}\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "{pathname of client folder of current site}\certs.ps1"
+]]></ActionScript>
+			<SuccessCriteria Option="RunToCompletion"></SuccessCriteria>
+		</DefaultAction>
+	</Task>
+</BES>

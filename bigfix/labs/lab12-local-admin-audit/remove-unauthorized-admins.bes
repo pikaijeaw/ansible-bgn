@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Task>
+		<Title>Lab - Remove unauthorized members from local Administrators</Title>
+		<Description><![CDATA[<P>ลบทุกคนออกจาก Administrators ยกเว้นรายชื่อที่อนุญาต (คั่นด้วย ,) ทดสอบกับกลุ่มเล็กก่อนเสมอ</P>]]></Description>
+		<Relevance><![CDATA[windows of operating system]]></Relevance>
+		<Relevance><![CDATA[product type of operating system = workstation product type]]></Relevance>
+		<Category>Security Compliance</Category>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[action parameter query "Allowed" with description "Allowed members, comma separated (DOMAIN\Group or local name)" and with default value "Administrator,CORP\Domain Admins,CORP\Desktop Support"
+
+delete __createfile
+createfile until __EOF__
+$allowed = '{parameter "Allowed"}'.Split(',') | ForEach-Object {{ $_.Trim().ToLower() }
+$log = 'C:\Windows\Temp\bigfix-admin-cleanup.log'
+Get-LocalGroupMember -Group 'Administrators' | ForEach-Object {{
+  $short = ($_.Name -split '\\')[-1].ToLower()
+  if (($allowed -notcontains $_.Name.ToLower()) -and ($allowed -notcontains $short)) {{
+    Remove-LocalGroupMember -Group 'Administrators' -Member $_.Name
+    "$(Get-Date -Format s) removed $($_.Name)" | Out-File -Append $log
+  }
+}
+__EOF__
+
+delete admins.ps1
+move __createfile admins.ps1
+action uses wow64 redirection false
+waithidden "{pathname of native system folder}\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "{pathname of client folder of current site}\admins.ps1"
+]]></ActionScript>
+			<SuccessCriteria Option="RunToCompletion"></SuccessCriteria>
+		</DefaultAction>
+	</Task>
+</BES>

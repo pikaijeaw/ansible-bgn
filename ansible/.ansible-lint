@@ -1,0 +1,13 @@
+---
+# ansible-lint config (https://ansible.readthedocs.io/projects/lint/)
+profile: production
+exclude_paths:
+  - lab-env/
+  - labs/*/reports/
+  - labs/*/evidence/
+  - labs/*/backups/
+  - labs/lab16-bigfix-integration/bigfix_inventory.yml
+  - labs/lab11-monitoring-agent/prometheus-targets.yml
+  - .github/
+skip_list:
+  - var-naming[no-role-prefix]   # labs ใช้ชื่อตัวแปรสั้นเพื่อให้อ่านง่าย

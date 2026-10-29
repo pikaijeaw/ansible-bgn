@@ -1,0 +1,129 @@
+---
+# Lab 11: ติดตั้ง monitoring agent (Prometheus node_exporter) ทุกเครื่อง
+# node_exporter_source:
+#   github  = ดาวน์โหลด binary จาก GitHub release + ตรวจ checksum (วิธีที่นิยมที่สุด)
+#   package = ใช้ package ของ distro (เหมาะกับเครื่องที่ออก internet ไม่ได้แต่มี repo mirror ภายใน)
+- name: Install Prometheus node_exporter
+  hosts: linux
+  become: true
+
+  vars:
+    node_exporter_source: github
+    node_exporter_version: "1.8.2"
+    node_exporter_port: 9100
+    node_exporter_user: node_exporter
+    node_exporter_textfile_dir: /var/lib/node_exporter/textfile
+    node_exporter_extra_collectors: [systemd, processes]
+    node_exporter_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+    node_exporter_release: "node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}"
+    node_exporter_url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}"
+    node_exporter_package_service: >-
+      {{ 'prometheus-node-exporter' if ansible_facts['os_family'] == 'Debian' else 'node_exporter' }}
+
+  handlers:
+    - name: Restart node_exporter
+      ansible.builtin.systemd:
+        name: node_exporter
+        state: restarted
+        daemon_reload: true
+
+  tasks:
+    - name: Install from GitHub release
+      when: node_exporter_source == 'github'
+      block:
+        - name: Create service user
+          ansible.builtin.user:
+            name: "{{ node_exporter_user }}"
+            system: true
+            shell: /usr/sbin/nologin
+            create_home: false
+
+        - name: Create textfile collector directory
+          ansible.builtin.file:
+            path: "{{ node_exporter_textfile_dir }}"
+            state: directory
+            owner: "{{ node_exporter_user }}"
+            mode: "0755"
+
+        - name: Download release tarball (checksum verified)
+          ansible.builtin.get_url:
+            url: "{{ node_exporter_url }}/{{ node_exporter_release }}.tar.gz"
+            dest: "/tmp/{{ node_exporter_release }}.tar.gz"
+            checksum: "sha256:{{ node_exporter_url }}/sha256sums.txt"
+            mode: "0644"
+
+        - name: Unpack binary
+          ansible.builtin.unarchive:
+            src: "/tmp/{{ node_exporter_release }}.tar.gz"
+            dest: /tmp
+            remote_src: true
+            creates: "/tmp/{{ node_exporter_release }}/node_exporter"
+
+        - name: Install binary
+          ansible.builtin.copy:
+            src: "/tmp/{{ node_exporter_release }}/node_exporter"
+            dest: /usr/local/bin/node_exporter
+            remote_src: true
+            mode: "0755"
+          notify: Restart node_exporter
+
+        - name: Install systemd unit
+          ansible.builtin.template:
+            src: templates/node_exporter.service.j2
+            dest: /etc/systemd/system/node_exporter.service
+            mode: "0644"
+          notify: Restart node_exporter
+
+        - name: Enable and start node_exporter
+          ansible.builtin.systemd:
+            name: node_exporter
+            state: started
+            enabled: true
+            daemon_reload: true
+
+    - name: Install from distro package
+      when: node_exporter_source == 'package'
+      block:
+        - name: Install package
+          ansible.builtin.package:
+            name: "{{ 'prometheus-node-exporter' if ansible_facts['os_family'] == 'Debian' else 'golang-github-prometheus-node-exporter' }}"
+            state: present
+
+        - name: Enable and start packaged service
+          ansible.builtin.service:
+            name: "{{ node_exporter_package_service }}"
+            state: started
+            enabled: true
+
+    - name: Flush handlers before verification
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify metrics endpoint from the control node
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}:{{ node_exporter_port }}/metrics"
+        return_content: true
+      register: metrics
+      delegate_to: localhost
+      become: false
+      retries: 5
+      delay: 2
+      until: metrics.status == 200
+      failed_when: "'node_uname_info' not in metrics.content"
+
+- name: Generate Prometheus scrape config
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Write prometheus.yml target list
+      ansible.builtin.copy:
+        dest: "{{ playbook_dir }}/prometheus-targets.yml"
+        mode: "0644"
+        content: |
+          # นำไปใส่ใน prometheus.yml ของ Prometheus server
+          scrape_configs:
+            - job_name: node
+              static_configs:
+          {% for group in ['lb', 'web', 'db'] %}
+                - targets: [{% for h in groups[group] %}'{{ h }}:9100'{{ ', ' if not loop.last }}{% endfor %}]
+                  labels: { tier: {{ group }}, env: {{ hostvars[groups[group][0]]['env_name'] }} }
+          {% endfor %}

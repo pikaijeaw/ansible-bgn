@@ -1,0 +1,96 @@
+---
+# Lab 13: Daily health check ทั้ง fleet แล้วสรุปเป็น OK / WARN / CRIT
+- name: Collect health signals
+  hosts: linux
+  become: true
+  gather_facts: true
+
+  vars:
+    disk_warn_pct: 80
+    disk_crit_pct: 90
+    mem_warn_pct: 85
+    required_services:
+      web: [nginx]
+      lb: [haproxy]
+      db: [mariadb]
+
+  tasks:
+    - name: Disk usage per filesystem
+      ansible.builtin.shell: |
+        set -o pipefail
+        df -P -x tmpfs -x devtmpfs -x overlay -x squashfs | awk 'NR>1 {gsub("%","",$5); print $6" "$5}'
+      args:
+        executable: /bin/bash
+      register: disk_raw
+      changed_when: false
+
+    - name: Failed systemd units  # noqa: command-instead-of-module (systemd module ไม่มีคำสั่ง list)
+      ansible.builtin.command: systemctl list-units --state=failed --no-legend --plain
+      register: failed_units
+      changed_when: false
+
+    - name: Service states
+      ansible.builtin.service_facts:
+
+    - name: Evaluate checks
+      ansible.builtin.set_fact:
+        health: "{{ checks }}"
+      vars:
+        disks: "{{ disk_raw.stdout_lines | map('split') | list }}"
+        mem_used_pct: "{{ (100 - (ansible_facts['memory_mb']['nocache']['free'] * 100 / ansible_facts['memtotal_mb'])) | round(1) }}"
+        load1: "{{ ansible_facts['loadavg']['1m'] | default(0) }}"
+        wanted: "{{ group_names | map('extract', required_services) | select('defined') | flatten }}"
+        down: >-
+          {{ wanted | reject('in', ansible_facts['services'] | dict2items
+             | selectattr('value.state', 'equalto', 'running') | map(attribute='value.name')
+             | map('regex_replace', '\.service$', '') | list) | list }}
+        checks:
+          - name: disk
+            status: >-
+              {{ 'CRIT' if disks | map('last') | map('int') | select('ge', disk_crit_pct | int) | list
+                 else ('WARN' if disks | map('last') | map('int') | select('ge', disk_warn_pct | int) | list else 'OK') }}
+            detail: "{{ disks | map('join', '=') | join('% ') }}%"
+          - name: memory
+            status: "{{ 'WARN' if mem_used_pct | float >= mem_warn_pct | float else 'OK' }}"
+            detail: "{{ mem_used_pct }}% used"
+          - name: load
+            status: "{{ 'WARN' if load1 | float > ansible_facts['processor_vcpus'] * 2 else 'OK' }}"
+            detail: "load1={{ load1 }} vcpu={{ ansible_facts['processor_vcpus'] }}"
+          - name: failed_units
+            status: "{{ 'WARN' if failed_units.stdout_lines | length > 0 else 'OK' }}"
+            detail: "{{ failed_units.stdout_lines | map('split') | map('first') | join(', ') | default('none', true) }}"
+          - name: services
+            status: "{{ 'CRIT' if down | length > 0 else 'OK' }}"
+            detail: "{{ ('DOWN: ' ~ down | join(', ')) if down else (wanted | join(', ') | default('n/a', true)) }}"
+
+- name: Summarize
+  hosts: localhost
+  gather_facts: false
+  vars:
+    healthcheck_fail_on_critical: true
+  tasks:
+    - name: Print fleet health table
+      ansible.builtin.debug:
+        msg: |-
+          {{ '%-8s %-13s %-5s %s' | format('HOST', 'CHECK', 'STATE', 'DETAIL') }}
+          {% for h in groups['linux'] | sort %}
+          {% for c in hostvars[h]['health'] | default([]) %}
+          {{ '%-8s %-13s %-5s %s' | format(h, c.name, c.status | trim, c.detail) }}
+          {% endfor %}
+          {% endfor %}
+
+    - name: Collect CRIT checks from every host
+      ansible.builtin.set_fact:
+        critical: >-
+          {%- set out = [] -%}
+          {%- for h in groups['linux'] -%}
+          {%- for c in hostvars[h]['health'] | default([]) if c.status | trim == 'CRIT' -%}
+          {%- set _ = out.append(h ~ ':' ~ c.name ~ ' (' ~ c.detail ~ ')') -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ out }}
+
+    - name: Fail the job when anything is critical (AWX/CI will alert)
+      ansible.builtin.fail:
+        msg: "CRITICAL: {{ critical | join(', ') }}"
+      when: healthcheck_fail_on_critical | bool and critical | length > 0

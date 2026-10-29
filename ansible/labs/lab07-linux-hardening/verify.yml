@@ -1,0 +1,31 @@
+---
+# ตรวจผลหลัง hardening (ใช้ใน audit หรือ pipeline)
+- name: Verify hardening controls
+  hosts: linux
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Read effective sshd settings
+      ansible.builtin.command: sshd -T
+      register: sshd_effective
+      changed_when: false
+
+    - name: Assert SSH controls
+      ansible.builtin.assert:
+        that:
+          - "'permitrootlogin no' in sshd_effective.stdout_lines"
+          - "'passwordauthentication no' in sshd_effective.stdout_lines"
+          - "'maxauthtries 4' in sshd_effective.stdout_lines"
+          - "'x11forwarding no' in sshd_effective.stdout_lines"
+        fail_msg: "SSH hardening NOT effective on {{ inventory_hostname }}"
+        success_msg: "SSH hardening OK"
+
+    - name: Read sysctl values
+      ansible.builtin.command: sysctl -n net.ipv4.tcp_syncookies net.ipv4.conf.all.accept_redirects
+      register: sysctl_values
+      changed_when: false
+
+    - name: Assert network controls
+      ansible.builtin.assert:
+        that: sysctl_values.stdout_lines == ['1', '0']
+        success_msg: "sysctl OK"

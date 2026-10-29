@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+	<Task>
+		<Title>Lab - Uninstall MSI application by DisplayName (parameterized)</Title>
+		<Description><![CDATA[<P>ถอนโปรแกรมที่ติดตั้งด้วย MSI โดยค้นจากชื่อใน registry ตอน Take Action จะมีช่องให้กรอกชื่อ</P><P>ใช้กับโปรแกรมต้องห้าม (blacklisted software) หรือเวอร์ชันเก่าที่มีช่องโหว่</P>]]></Description>
+		<Relevance><![CDATA[windows of operating system]]></Relevance>
+		<Category>Software Distribution</Category>
+		<Source>Internal</Source>
+		<SourceID></SourceID>
+		<SourceReleaseDate>2026-10-29</SourceReleaseDate>
+		<SourceSeverity></SourceSeverity>
+		<CVENames></CVENames>
+		<SANSID></SANSID>
+		<MIMEField>
+			<Name>x-fixlet-modification-time</Name>
+			<Value>Thu, 29 Oct 2026 00:00:00 +0000</Value>
+		</MIMEField>
+		<Domain>BESC</Domain>
+		<DefaultAction ID="Action1">
+			<Description>
+				<PreLink>Click </PreLink>
+				<Link>here</Link>
+				<PostLink> to deploy this action.</PostLink>
+			</Description>
+			<ActionScript MIMEType="application/x-Fixlet-Windows-Shell"><![CDATA[action parameter query "AppName" with description "DisplayName prefix to uninstall (e.g. 7-Zip)" and with default value "7-Zip"
+
+// Find the MSI ProductCode (key name) in the registry and run msiexec /x
+waithidden msiexec.exe /x {name of key whose (exists value "DisplayName" whose (it as string as lowercase starts with (parameter "AppName" as lowercase)) of it AND exists value "WindowsInstaller" whose (it as integer = 1) of it) of keys "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" of native registry} /qn /norestart
+
+continue if {exit code of action = 0 OR exit code of action = 3010 OR exit code of action = 1605}
+]]></ActionScript>
+			<SuccessCriteria Option="RunToCompletion"></SuccessCriteria>
+		</DefaultAction>
+	</Task>
+</BES>

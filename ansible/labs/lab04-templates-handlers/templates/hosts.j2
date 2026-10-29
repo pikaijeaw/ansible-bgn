@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+127.0.0.1   localhost
+::1         localhost ip6-localhost ip6-loopback
+
+# --- servers from Ansible inventory ---
+{% for host in groups['linux'] | sort %}
+{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] | default('0.0.0.0') }}  {{ host }}.{{ domain }} {{ host }}
+{% endfor %}

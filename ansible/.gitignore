@@ -1,0 +1,8 @@
+labs/lab08-rolling-patching/pending-updates.txt
+labs/lab12-inventory-report/reports/
+labs/lab10-database-backup/backups/
+*.retry
+.vault_pass*
+labs/lab11-monitoring-agent/prometheus-targets.yml
+labs/lab14-incident-response/evidence/
+labs/lab16-bigfix-integration/bigfix_inventory.yml

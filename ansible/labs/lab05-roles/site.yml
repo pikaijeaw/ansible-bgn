@@ -1,0 +1,20 @@
+---
+# Lab 05: ประกอบระบบทั้งหมดจาก roles
+- name: Baseline for every server
+  hosts: linux
+  become: true
+  roles:
+    - common
+
+- name: Web tier
+  hosts: web
+  become: true
+  force_handlers: true   # ถ้ามี task fail ทีหลัง handler ที่ถูก notify ไปแล้วก็ยังทำงาน (ไม่ทำให้ reload หาย)
+  roles:
+    - webapp          # webapp มี dependency เป็น role nginx (ดู roles/webapp/meta/main.yml)
+
+- name: Load balancer tier
+  hosts: lb
+  become: true
+  roles:
+    - haproxy

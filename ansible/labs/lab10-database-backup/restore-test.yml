@@ -1,0 +1,51 @@
+---
+# Backup ที่ยังไม่เคยทดสอบ restore ถือว่ายังไม่มี backup
+# playbook นี้ restore ลง database ชั่วคราว ตรวจจำนวน row แล้วลบทิ้ง
+- name: Monthly restore test
+  hosts: db
+  become: true
+  vars:
+    backup_dir: /opt/backup/mysql
+    source_db: appdb
+    test_db: "{{ source_db }}_restoretest"
+    check_table: customers
+
+  tasks:
+    - name: Load OS variables
+      ansible.builtin.include_vars: "{{ ansible_facts['os_family'] }}.yml"
+
+    - name: Create temporary database
+      community.mysql.mysql_db:
+        name: "{{ test_db }}"
+        state: present
+        login_unix_socket: "{{ db_socket }}"
+
+    - name: Restore and validate, always clean up
+      block:
+        - name: Restore latest dump into temporary database
+          ansible.builtin.shell: |
+            set -o pipefail
+            zcat {{ backup_dir }}/latest/{{ source_db }}.sql.gz | mysql {{ test_db }}
+          args:
+            executable: /bin/bash
+          changed_when: true
+
+        - name: Count rows in production and restored copy
+          community.mysql.mysql_query:
+            login_unix_socket: "{{ db_socket }}"
+            query:
+              - "SELECT COUNT(*) AS n FROM {{ source_db }}.{{ check_table }}"
+              - "SELECT COUNT(*) AS n FROM {{ test_db }}.{{ check_table }}"
+          register: counts
+
+        - name: Assert restored data matches
+          ansible.builtin.assert:
+            that: counts.query_result[0][0].n == counts.query_result[1][0].n
+            success_msg: "RESTORE OK: {{ counts.query_result[1][0].n }} rows in {{ check_table }}"
+            fail_msg: "RESTORE MISMATCH: prod={{ counts.query_result[0][0].n }} restored={{ counts.query_result[1][0].n }}"
+      always:
+        - name: Drop temporary database
+          community.mysql.mysql_db:
+            name: "{{ test_db }}"
+            state: absent
+            login_unix_socket: "{{ db_socket }}"

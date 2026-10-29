@@ -1,0 +1,5 @@
+---
+nginx_port: 80
+nginx_server_name: "{{ inventory_hostname }}"
+nginx_web_root: /var/www/app/current
+nginx_client_max_body_size: 10m
