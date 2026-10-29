@@ -17,6 +17,20 @@
     - { src: index.html.j2, dest: index.html }
     - { src: version.txt.j2, dest: version.txt }
 
+- name: Read the release that is live right now
+  ansible.builtin.stat:
+    path: "{{ webapp_base_dir }}/current"
+  register: webapp_current
+
+- name: Remember previous release (used by rollback)
+  ansible.builtin.copy:
+    dest: "{{ webapp_base_dir }}/PREVIOUS"
+    content: "{{ webapp_current.stat.lnk_source | basename }}\n"
+    mode: "0644"
+  when:
+    - webapp_current.stat.islnk | default(false)
+    - webapp_current.stat.lnk_source | basename != webapp_version
+
 - name: Switch "current" symlink to the new release
   ansible.builtin.file:
     src: "{{ webapp_base_dir }}/releases/{{ webapp_version }}"

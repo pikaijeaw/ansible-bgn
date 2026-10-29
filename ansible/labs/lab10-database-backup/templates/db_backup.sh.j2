@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+# Backup ทีละ database (restore ทีละตัวได้) + เก็บย้อนหลัง {{ backup_retention_days }} วัน
+set -euo pipefail
+
+BACKUP_DIR="{{ backup_dir }}"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+LOG="/var/log/company/db_backup.log"
+mkdir -p "$BACKUP_DIR/$STAMP"
+
+log() { echo "$(date '+%F %T') $*" | tee -a "$LOG"; }
+
+DBS=$(mysql -N -e "SHOW DATABASES" | grep -Ev '^(information_schema|performance_schema|sys)$')
+for db in $DBS; do
+  mysqldump --single-transaction --routines --triggers --events "$db" | gzip > "$BACKUP_DIR/$STAMP/$db.sql.gz"
+  gzip -t "$BACKUP_DIR/$STAMP/$db.sql.gz"
+  log "OK  $db -> $BACKUP_DIR/$STAMP/$db.sql.gz ($(du -h "$BACKUP_DIR/$STAMP/$db.sql.gz" | cut -f1))"
+done
+
+ln -sfn "$BACKUP_DIR/$STAMP" "$BACKUP_DIR/latest"
+find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -mtime +{{ backup_retention_days }} -exec rm -rf {} +
+log "DONE backup $STAMP"

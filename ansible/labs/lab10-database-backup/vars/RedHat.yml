@@ -1,0 +1,4 @@
+---
+db_packages: [mariadb-server, mariadb, python3-PyMySQL, gzip]
+db_service: mariadb
+db_socket: /var/lib/mysql/mysql.sock

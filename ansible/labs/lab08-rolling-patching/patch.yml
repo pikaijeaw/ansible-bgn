@@ -17,6 +17,9 @@
     patch_exclude: []               # เช่น ['nginx*', 'kernel*'] ถ้ายังไม่พร้อมอัปเกรด
     patch_min_free_mb: 1024
     patch_log: /var/log/company/patching.log
+    # คำสั่งที่ reboot module ใช้ดูว่าเครื่องบูตใหม่แล้วหรือยัง (ค่าต้องเปลี่ยนหลัง reboot)
+    # บน VM จริง boot_id เปลี่ยนทุกครั้งที่บูต ส่วนใน lab (container) ถูก override ใน inventory/group_vars/all.yml
+    patch_boot_time_command: "{{ lab_boot_time_command | default('cat /proc/sys/kernel/random/boot_id') }}"
     lb_socket: /run/haproxy/admin.sock
     lb_backend: be_web
     in_lb_pool: "{{ inventory_hostname in groups['web'] | default([]) }}"
@@ -105,6 +108,7 @@
         msg: "Rebooting for OS patches (Ansible)"
         reboot_timeout: 600
         post_reboot_delay: 5
+        boot_time_command: "{{ patch_boot_time_command }}"
       when: patch_allow_reboot and (reboot_needed | default(false) | bool or patch_force_reboot | bool)
 
     - name: Write patch log on the host

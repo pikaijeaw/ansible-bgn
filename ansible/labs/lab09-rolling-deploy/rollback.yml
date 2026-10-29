@@ -1,0 +1,53 @@
+---
+# Rollback กลับไปเวอร์ชันก่อนหน้า (อ่านจากไฟล์ PREVIOUS ที่ role webapp บันทึกไว้)
+- name: Roll back web tier to previous release
+  hosts: web
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  vars:
+    base_dir: /var/www/app
+
+  tasks:
+    - name: Read previous release
+      ansible.builtin.slurp:
+        src: "{{ base_dir }}/PREVIOUS"
+      register: previous_file
+
+    - name: Set rollback target
+      ansible.builtin.set_fact:
+        rollback_to: "{{ previous_file.content | b64decode | trim }}"
+
+    - name: Make sure the previous release still exists
+      ansible.builtin.stat:
+        path: "{{ base_dir }}/releases/{{ rollback_to }}"
+      register: target_release
+      failed_when: not target_release.stat.exists
+
+    - name: Drain from load balancer
+      ansible.builtin.include_tasks: tasks/lb_member.yml
+      vars:
+        lb_state: disabled
+
+    - name: Point "current" back to the previous release
+      ansible.builtin.file:
+        src: "{{ base_dir }}/releases/{{ rollback_to }}"
+        dest: "{{ base_dir }}/current"
+        state: link
+        force: true
+
+    - name: Verify
+      ansible.builtin.uri:
+        url: "http://localhost/version.txt"
+        return_content: true
+      register: served
+      failed_when: served.content | trim != rollback_to
+
+    - name: Return to load balancer
+      ansible.builtin.include_tasks: tasks/lb_member.yml
+      vars:
+        lb_state: enabled
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} rolled back to {{ rollback_to }}"

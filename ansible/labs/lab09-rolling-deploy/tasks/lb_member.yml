@@ -1,0 +1,15 @@
+---
+# ถอด/ใส่เครื่องปัจจุบันใน haproxy ทุกตัวในกลุ่ม lb
+# ใช้: include_tasks: tasks/lb_member.yml  พร้อม vars: { lb_state: disabled | enabled }
+- name: "Set {{ inventory_hostname }} to {{ lb_state }} on load balancers"
+  community.general.haproxy:
+    state: "{{ lb_state }}"
+    host: "{{ inventory_hostname }}"
+    backend: be_web
+    socket: /run/haproxy/admin.sock
+    drain: "{{ lb_state == 'disabled' }}"
+    wait: true
+  delegate_to: "{{ lb_host }}"
+  loop: "{{ groups['lb'] }}"
+  loop_control:
+    loop_var: lb_host
