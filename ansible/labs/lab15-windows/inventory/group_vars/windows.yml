@@ -1,0 +1,11 @@
+---
+# การเชื่อมต่อ Windows ผ่าน WinRM (ต้องรัน ConfigureRemotingForAnsible / Enable-PSRemoting ที่ฝั่ง Windows ก่อน)
+ansible_connection: winrm
+ansible_winrm_transport: ntlm          # domain ใช้ kerberos ได้
+ansible_port: 5986
+ansible_winrm_server_cert_validation: ignore   # lab เท่านั้น production ใช้ cert จริง
+ansible_user: Administrator
+ansible_password: "{{ vault_win_admin_password }}"
+# ทางเลือก: Windows Server 2019+ ใช้ OpenSSH ได้
+# ansible_connection: ssh
+# ansible_shell_type: powershell

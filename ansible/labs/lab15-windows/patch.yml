@@ -1,0 +1,34 @@
+---
+# Windows Update แบบ rolling (เทียบได้กับ BigFix Patches for Windows)
+- name: Patch Windows servers
+  hosts: windows
+  serial: 1
+  max_fail_percentage: 0
+  vars:
+    win_update_categories: [SecurityUpdates, CriticalUpdates, UpdateRollups]
+    win_update_reject: []          # เช่น ['KB5034441'] ถ้ามี KB ที่มีปัญหา
+
+  tasks:
+    - name: Search available updates (audit only)
+      ansible.windows.win_updates:
+        category_names: "{{ win_update_categories }}"
+        state: searched
+      register: available
+
+    - name: Show updates that will be installed
+      ansible.builtin.debug:
+        msg: "{{ available.updates | dict2items | map(attribute='value.title') | list }}"
+
+    - name: Install updates and reboot as many times as needed
+      ansible.windows.win_updates:
+        category_names: "{{ win_update_categories }}"
+        reject_list: "{{ win_update_reject }}"
+        reboot: true
+        reboot_timeout: 3600
+      register: installed
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: installed={{ installed.installed_update_count }}
+          failed={{ installed.failed_update_count | default(0) }} reboot={{ installed.reboot_required }}

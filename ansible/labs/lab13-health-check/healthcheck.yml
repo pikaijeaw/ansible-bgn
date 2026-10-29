@@ -24,7 +24,7 @@
       register: disk_raw
       changed_when: false
 
-    - name: Failed systemd units
+    - name: Failed systemd units  # noqa: command-instead-of-module (systemd module ไม่มีคำสั่ง list)
       ansible.builtin.command: systemctl list-units --state=failed --no-legend --plain
       register: failed_units
       changed_when: false

@@ -1,0 +1,44 @@
+---
+# Lab 16.3: เก็บ Fixlet/Task/Analysis (.bes) ไว้ใน Git แล้ว import เข้า BigFix custom site อัตโนมัติ
+# (แนวคิด "BigFix content as code": review ผ่าน pull request ก่อนเข้า production)
+- name: Import BigFix content from the repository
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    bes_root: "{{ playbook_dir }}/../../../bigfix/labs"
+    bes_files: "{{ query('ansible.builtin.fileglob', bes_root ~ '/*/*.bes') | sort }}"
+
+  tasks:
+    - name: Fail if no content found
+      ansible.builtin.assert:
+        that: bes_files | length > 0
+        fail_msg: "no .bes files under {{ bes_root }}"
+
+    - name: Validate every file is well-formed XML before upload
+      ansible.builtin.command: python3 -c "import sys, xml.dom.minidom as m; m.parse(sys.argv[1])" {{ item }}
+      loop: "{{ bes_files }}"
+      loop_control:
+        label: "{{ item | basename }}"
+      changed_when: false
+
+    - name: Import into custom site (fixlets endpoint accepts Fixlet, Task and Analysis)
+      ansible.builtin.uri:
+        url: "{{ bigfix_url }}/api/fixlets/custom/{{ bigfix_custom_site | urlencode }}"
+        method: POST
+        user: "{{ bigfix_user }}"
+        password: "{{ bigfix_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ bigfix_validate_certs }}"
+        headers:
+          Content-Type: application/xml
+        body: "{{ lookup('ansible.builtin.file', item) }}"
+        return_content: true
+      loop: "{{ bes_files }}"
+      loop_control:
+        label: "{{ item | basename }}"
+      register: imported
+
+    - name: Show new IDs
+      ansible.builtin.debug:
+        msg: "{{ imported.results | map(attribute='content') | map('regex_search', '<Name>([^<]+)</Name><ID>(\\d+)</ID>', '\\1', '\\2') | list }}"

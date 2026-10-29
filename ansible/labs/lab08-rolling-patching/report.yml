@@ -24,7 +24,9 @@
 
     - name: Build per-host summary
       ansible.builtin.set_fact:
-        pending: "{{ (deb_updates.stdout_lines if deb_updates is not skipped else rpm_updates.stdout_lines) | default([]) | select | list }}"
+        pending: >-
+          {{ (deb_updates.stdout_lines if deb_updates is not skipped else rpm_updates.stdout_lines)
+             | default([]) | select | list }}
 
     - name: Save report on control node
       ansible.builtin.copy:
@@ -33,7 +35,8 @@
         content: |
           Pending updates report - {{ now().strftime('%Y-%m-%d %H:%M') }}
           {% for h in ansible_play_hosts | sort %}
-          == {{ h }} ({{ hostvars[h]['ansible_facts']['distribution'] }} {{ hostvars[h]['ansible_facts']['distribution_version'] }}): {{ hostvars[h]['pending'] | length }} packages
+          {% set f = hostvars[h]['ansible_facts'] %}
+          == {{ h }} ({{ f['distribution'] }} {{ f['distribution_version'] }}): {{ hostvars[h]['pending'] | length }} packages
           {% for p in hostvars[h]['pending'][:15] %}
              {{ p }}
           {% endfor %}

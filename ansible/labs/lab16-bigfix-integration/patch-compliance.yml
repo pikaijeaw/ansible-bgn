@@ -1,0 +1,95 @@
+---
+# Lab 16.2: ดึงรายการ patch ที่ยังค้าง แล้วสั่ง deploy ผ่าน BigFix (เช่นจาก AWX self-service)
+- name: Patch compliance and remediation via BigFix
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    rel_applicable: >-
+      (id of it, name of site of it, name of it, applicable computer count of it) of bes fixlets
+      whose (applicable computer count of it > 0 and fixlet flag of it)
+    rel_targets: "names of applicable computers of bes fixlets whose (id of it = {{ deploy_fixlet_id }})"
+    deploy_fixlet_id: ""          # ใส่ ID เพื่อสั่ง deploy เช่น -e deploy_fixlet_id=701
+    deploy_site: ""               # ชื่อ site ของ fixlet นั้น
+
+  tasks:
+    - name: List fixlets that are relevant somewhere
+      ansible.builtin.uri:
+        url: "{{ bigfix_url }}/api/query?output=json&relevance={{ rel_applicable | urlencode }}"
+        user: "{{ bigfix_user }}"
+        password: "{{ bigfix_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ bigfix_validate_certs }}"
+      register: applicable
+
+    - name: Show compliance gap
+      ansible.builtin.debug:
+        msg: "{{ applicable.json.result | map('join', ' | ') | list }}"
+
+    - name: Deploy one fixlet to every computer where it is relevant
+      when: deploy_fixlet_id | length > 0
+      block:
+        - name: Get applicable computers of the fixlet
+          ansible.builtin.uri:
+            url: "{{ bigfix_url }}/api/query?output=json&relevance={{ rel_targets | urlencode }}"
+            user: "{{ bigfix_user }}"
+            password: "{{ bigfix_password }}"
+            force_basic_auth: true
+            validate_certs: "{{ bigfix_validate_certs }}"
+          register: targets
+
+        - name: Create the action (SourcedFixletAction)
+          ansible.builtin.uri:
+            url: "{{ bigfix_url }}/api/actions"
+            method: POST
+            user: "{{ bigfix_user }}"
+            password: "{{ bigfix_password }}"
+            force_basic_auth: true
+            validate_certs: "{{ bigfix_validate_certs }}"
+            headers:
+              Content-Type: application/xml
+            body: |
+              <?xml version="1.0" encoding="UTF-8"?>
+              <BES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="BES.xsd">
+                <SourcedFixletAction>
+                  <SourceFixlet>
+                    <Sitename>{{ deploy_site }}</Sitename>
+                    <FixletID>{{ deploy_fixlet_id }}</FixletID>
+                    <Action>Action1</Action>
+                  </SourceFixlet>
+                  <Target>
+              {% for c in targets.json.result %}
+                    <ComputerName>{{ c }}</ComputerName>
+              {% endfor %}
+                  </Target>
+                  <Settings>
+                    <HasTimeRange>true</HasTimeRange>
+                    <TimeRange><StartTime>22:00:00</StartTime><EndTime>05:00:00</EndTime></TimeRange>
+                    <HasRestartMessage>true</HasRestartMessage>
+                  </Settings>
+                  <Title>Ansible request: fixlet {{ deploy_fixlet_id }}</Title>
+                </SourcedFixletAction>
+              </BES>
+            return_content: true
+          register: bigfix_action
+
+        - name: Extract action ID
+          ansible.builtin.set_fact:
+            action_id: "{{ bigfix_action.content | regex_search('<ID>(\\d+)</ID>', '\\1') | first }}"
+
+        - name: Poll action status
+          ansible.builtin.uri:
+            url: "{{ bigfix_url }}/api/action/{{ action_id }}/status"
+            user: "{{ bigfix_user }}"
+            password: "{{ bigfix_password }}"
+            force_basic_auth: true
+            validate_certs: "{{ bigfix_validate_certs }}"
+            return_content: true
+          register: status
+          retries: 10
+          delay: 5
+          until: status.content is search('Fixed|Failed')
+
+        - name: Action result
+          ansible.builtin.debug:
+            msg: "Action {{ action_id }} on {{ targets.json.result }}: {{ status.content | regex_findall('Name=\"([^\"]+)\"><Status>([^<]+)') }}"

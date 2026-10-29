@@ -80,7 +80,7 @@
     - name: Patch RHEL/Rocky
       when: ansible_facts['os_family'] == 'RedHat'
       block:
-        - name: Upgrade packages
+        - name: Upgrade packages  # noqa: package-latest (การ patch คือการอัปเกรดเป็น latest โดยตั้งใจ)
           ansible.builtin.dnf:
             name: "*"
             state: latest
@@ -114,9 +114,11 @@
     - name: Write patch log on the host
       ansible.builtin.lineinfile:
         path: "{{ patch_log }}"
-        line: "{{ now(utc=true).isoformat() }} patched changed={{ patch_result.changed }} reboot={{ reboot_needed | default(false) | bool or patch_force_reboot | bool }}"
+        line: "{{ now(utc=true).isoformat() }} patched changed={{ patch_result.changed }} reboot={{ rebooted }}"
         create: true
         mode: "0640"
+      vars:
+        rebooted: "{{ patch_allow_reboot and (reboot_needed | default(false) | bool or patch_force_reboot | bool) }}"
 
   post_tasks:
     - name: Health check web service before returning it to the pool
