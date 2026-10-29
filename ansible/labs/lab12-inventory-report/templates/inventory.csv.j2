@@ -1,0 +1,5 @@
+hostname,groups,os,os_version,kernel,ip,vcpu,memory_mb,disk_free_gb,uptime_days,packages,listening_ports,last_patch
+{% for h in report_hosts | sort %}
+{% set f = hostvars[h]['ansible_facts'] %}
+{{ h }},{{ hostvars[h]['group_names'] | join('|') }},{{ f['distribution'] }},{{ f['distribution_version'] }},{{ f['kernel'] }},{{ f['default_ipv4']['address'] | default('') }},{{ f['processor_vcpus'] }},{{ f['memtotal_mb'] }},{{ hostvars[h]['disk_free_gb'] }},{{ (f['uptime_seconds'] / 86400) | round(1) }},{{ hostvars[h]['pkg_count'] }},{{ hostvars[h]['listen_ports'] | join('|') }},{{ hostvars[h]['last_patch'] }}
+{% endfor %}

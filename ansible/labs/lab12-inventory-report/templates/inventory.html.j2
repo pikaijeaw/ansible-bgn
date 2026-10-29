@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Server Inventory - {{ report_date }}</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 24px; color: #1f2933; }
+  h1 { font-size: 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border: 1px solid #d0d7de; padding: 6px 8px; text-align: left; }
+  th { background: #f3f4f6; }
+  .warn { background: #fff4e5; }
+  .summary span { display: inline-block; margin-right: 24px; }
+</style>
+</head>
+<body>
+<h1>Server Inventory Report — {{ report_date }}</h1>
+<p class="summary">
+  <span>Servers: <b>{{ report_hosts | length }}</b></span>
+  <span>Total vCPU: <b>{{ report_hosts | map('extract', hostvars, ['ansible_facts', 'processor_vcpus']) | sum }}</b></span>
+  <span>Low disk (&lt; {{ low_disk_gb }} GB): <b>{{ report_hosts | map('extract', hostvars, 'disk_free_gb') | map('int') | select('lt', low_disk_gb | int) | list | length }}</b></span>
+</p>
+<table>
+<tr><th>Host</th><th>Groups</th><th>OS</th><th>Kernel</th><th>IP</th><th>vCPU</th><th>RAM (MB)</th><th>Disk free (GB)</th><th>Uptime (days)</th><th>Packages</th><th>Listening ports</th><th>Last patch</th></tr>
+{% for h in report_hosts | sort %}
+{% set f = hostvars[h]['ansible_facts'] %}
+<tr class="{{ 'warn' if hostvars[h]['disk_free_gb'] | int < low_disk_gb | int else '' }}">
+  <td>{{ h }}</td>
+  <td>{{ hostvars[h]['group_names'] | join(', ') }}</td>
+  <td>{{ f['distribution'] }} {{ f['distribution_version'] }}</td>
+  <td>{{ f['kernel'] }}</td>
+  <td>{{ f['default_ipv4']['address'] | default('-') }}</td>
+  <td>{{ f['processor_vcpus'] }}</td>
+  <td>{{ f['memtotal_mb'] }}</td>
+  <td>{{ hostvars[h]['disk_free_gb'] }}</td>
+  <td>{{ (f['uptime_seconds'] / 86400) | round(1) }}</td>
+  <td>{{ hostvars[h]['pkg_count'] }}</td>
+  <td>{{ hostvars[h]['listen_ports'] | join(', ') }}</td>
+  <td>{{ hostvars[h]['last_patch'] }}</td>
+</tr>
+{% endfor %}
+</table>
+</body>
+</html>

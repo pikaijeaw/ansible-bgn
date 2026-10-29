@@ -3,3 +3,4 @@ labs/lab12-inventory-report/reports/
 labs/lab10-database-backup/backups/
 *.retry
 .vault_pass*
+labs/lab11-monitoring-agent/prometheus-targets.yml
