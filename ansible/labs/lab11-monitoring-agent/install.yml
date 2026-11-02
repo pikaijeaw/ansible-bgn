@@ -84,6 +84,12 @@
     - name: Install from distro package
       when: node_exporter_source == 'package'
       block:
+        - name: Refresh apt cache (Debian/Ubuntu only)
+          ansible.builtin.apt:
+            update_cache: true
+            cache_valid_time: 3600
+          when: ansible_facts['os_family'] == 'Debian'
+
         - name: Install package
           ansible.builtin.package:
             name: "{{ 'prometheus-node-exporter' if ansible_facts['os_family'] == 'Debian' else 'golang-github-prometheus-node-exporter' }}"

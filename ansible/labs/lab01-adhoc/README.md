@@ -38,6 +38,9 @@ ansible all -m shell -a "pgrep -a nginx || echo 'not running'"
 # copy ไฟล์ไปทุกเครื่อง
 ansible all -b -m copy -a "content='Authorized access only\n' dest=/etc/issue.net mode=0644"
 
+# อัปเดตรายการ package ก่อนติดตั้ง (Ubuntu ต้อง apt update ก่อน ไม่อย่างนั้นจะหา package ไม่เจอ)
+ansible 'linux:!db' -b -m apt -a "update_cache=true cache_valid_time=3600"
+
 # ติดตั้ง package (เลือก module ตาม OS อัตโนมัติด้วย module 'package')
 ansible all -b -m package -a "name=curl state=present"
 

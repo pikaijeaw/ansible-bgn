@@ -15,6 +15,12 @@
         mode: "0644"
         unsafe_writes: true   # /etc/hosts ใน container เป็น bind mount (บน VM จริงไม่ต้องใส่)
 
+    - name: Refresh apt cache (Debian/Ubuntu only)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
     - name: Install logrotate
       ansible.builtin.package:
         name: logrotate

@@ -18,6 +18,12 @@
     - name: Load OS variables
       ansible.builtin.include_vars: "{{ ansible_facts['os_family'] }}.yml"
 
+    - name: Refresh apt cache (Debian/Ubuntu only)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
     - name: Install MariaDB
       ansible.builtin.package:
         name: "{{ db_packages }}"
