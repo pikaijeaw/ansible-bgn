@@ -1,6 +1,7 @@
 # Managed node: Rocky Linux 9 (ตระกูล RHEL) + systemd + sshd
 FROM rockylinux/rockylinux:9
-RUN dnf -y install systemd dbus-broker openssh-server python3 sudo iproute procps-ng \
+# image ของ Rocky มากับ curl-minimal ซึ่งชนกับ curl ตัวเต็ม: --allowerasing สลับเป็น curl ตัวเต็มให้เหมือน server ทั่วไป
+RUN dnf -y install --allowerasing systemd dbus-broker openssh-server python3 sudo iproute procps-ng curl \
  && dnf clean all \
  && useradd -m -s /bin/bash ansible \
  && echo "ansible ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible \
