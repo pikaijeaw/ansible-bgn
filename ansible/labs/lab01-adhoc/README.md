@@ -42,7 +42,10 @@ ansible all -b -m copy -a "content='Authorized access only\n' dest=/etc/issue.ne
 ansible 'linux:!db' -b -m apt -a "update_cache=true cache_valid_time=3600"
 
 # ติดตั้ง package (เลือก module ตาม OS อัตโนมัติด้วย module 'package')
-ansible all -b -m package -a "name=curl state=present"
+ansible all -b -m package -a "name=wget state=present"
+
+# RHEL 9 / Rocky 9 มี curl-minimal ติดมา ถ้าจะลง curl ตัวเต็มต้องให้ dnf สลับ package ให้ (allowerasing)
+ansible db -b -m dnf -a "name=curl state=present allowerasing=true"
 
 # จัดการ service
 ansible web -b -m service -a "name=cron state=started enabled=true"

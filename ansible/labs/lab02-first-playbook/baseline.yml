@@ -21,10 +21,20 @@
         cache_valid_time: 3600
       when: ansible_facts['os_family'] == 'Debian'
 
-    - name: Install baseline packages
-      ansible.builtin.package:
+    - name: Install baseline packages (Debian/Ubuntu)
+      ansible.builtin.apt:
         name: "{{ baseline_packages }}"
         state: present
+      when: ansible_facts['os_family'] == 'Debian'
+
+    # RHEL 9 / Rocky 9 มักมี curl-minimal ติดมา ซึ่งชนกับ curl ตัวเต็ม
+    # allowerasing ให้ dnf ถอด curl-minimal ออกแล้วใส่ curl แทน (เหมือน dnf install --allowerasing)
+    - name: Install baseline packages (RHEL/Rocky)
+      ansible.builtin.dnf:
+        name: "{{ baseline_packages }}"
+        state: present
+        allowerasing: true
+      when: ansible_facts['os_family'] == 'RedHat'
 
     - name: Set timezone
       community.general.timezone:

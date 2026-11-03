@@ -5,7 +5,7 @@
 
 ## สิ่งที่จะได้เรียน
 - โครงสร้าง playbook: `hosts`, `become`, `vars`, `tasks`
-- module พื้นฐาน: `apt`, `package`, `file`, `copy`, `debug`
+- module พื้นฐาน: `apt`, `dnf`, `file`, `copy`, `debug`
 - `loop` และ `when` เบื้องต้น
 - ตัวแปรจาก `inventory/group_vars/all.yml` (`timezone`, `company`, ...)
 
@@ -38,6 +38,10 @@ lb01   : ok=8  changed=0  ...
 ```
 ถ้ารันรอบสองแล้วยังมี task ที่ `changed` แสดงว่า task นั้นไม่ idempotent ต้องแก้
 
+> **ข้อจำกัดของ `--check`:** ตอน dry run Ansible ไม่ได้ติดตั้ง package จริง
+> playbook ที่ติดตั้ง package แล้ว start service ต่อ (เช่น lab04/lab05 ที่ลง nginx) จึงอาจ fail ด้วย `Could not find the requested service` บนเครื่องที่ยังไม่เคยลง
+> แบบนี้ถือว่าปกติ ให้รันจริงหนึ่งรอบก่อน แล้วค่อยใช้ `--check` ตรวจ drift ในรอบต่อๆ ไป
+
 ## ถ้า task ติดตั้ง package fail
 playbook นี้มี task `Refresh apt cache` (`apt update`) อยู่ก่อนติดตั้ง package แล้ว และ image ของ lab ก็ทำ `apt update` ไว้ตั้งแต่ตอน build
 ถ้ายัง fail ให้ดูข้อความ error:
@@ -46,6 +50,7 @@ playbook นี้มี task `Refresh apt cache` (`apt update`) อยู่ก
 |---|---|---|
 | `No package matching 'xxx' is available` | รายการ package ในเครื่องยังว่างหรือเก่า | สั่ง update เอง: `ansible 'linux:!db' -b -m apt -a "update_cache=true"` แล้วรันใหม่ หรือ build image ใหม่ด้วย `docker compose build --no-cache` |
 | `Release file ... is not valid yet` | นาฬิกาเครื่องเพี้ยน (เจอบ่อยบน WSL หลัง sleep) | `wsl --shutdown` แล้วเปิดใหม่ (ดู [docs/04-wsl-setup.md](../../../docs/04-wsl-setup.md)) |
+| `Depsolve Error ... curl-minimal ... conflicts with curl` (db01 / RHEL 9) | Rocky/RHEL 9 มี `curl-minimal` ติดมา ซึ่งชนกับ `curl` ตัวเต็ม | playbook ใช้ `ansible.builtin.dnf` กับ `allowerasing: true` ให้สลับ package แล้ว ถ้ายังเจอ ให้ดึงโค้ดล่าสุด หรือ build db01 ใหม่: `docker compose build --no-cache db01` |
 | `Temporary failure resolving 'archive.ubuntu.com'` | DNS ใช้ไม่ได้ (มักเกิดตอนต่อ VPN) | ปิด VPN หรือตั้ง DNS ให้ Docker |
 
 ## ลองทำให้พัง แล้วแก้
