@@ -11,6 +11,7 @@ repo สำหรับเรียน **Ansible** และ **HCL BigFix** ต�
 | [docs/03-learning-plan.md](docs/03-learning-plan.md) | **ตารางการเรียนรู้ 12 สัปดาห์** ที่ผูกกับทุก lab |
 | [docs/04-wsl-setup.md](docs/04-wsl-setup.md) | ตั้ง lab บน Windows ด้วย WSL2 + ปัญหาที่อาจเจอ |
 | [docs/05-ansible-cheatsheet.md](docs/05-ansible-cheatsheet.md) | **สรุป Ansible ภาษาไทย** เฉพาะที่สำคัญและใช้งานจริง (cheat sheet) |
+| [docs/06-bigfix-cheatsheet.md](docs/06-bigfix-cheatsheet.md) | **สรุป BigFix ภาษาไทย** เฉพาะที่สำคัญและใช้งานจริง (cheat sheet) |
 | [ansible/README.md](ansible/README.md) | วิธีตั้ง lab (Docker) และรายการ Ansible lab |
 | [bigfix/README.md](bigfix/README.md) | วิธีตั้ง lab server และรายการ BigFix lab |
 
