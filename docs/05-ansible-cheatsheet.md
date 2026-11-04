@@ -271,3 +271,88 @@ become_method = sudo
 - เอกสารทางการ: https://docs.ansible.com/ansible/latest/
 - รายชื่อโมดูล: https://docs.ansible.com/ansible/latest/collections/index.html
 - Galaxy (role/collection): https://galaxy.ansible.com
+
+## 17. ตาราง Option ของคำสั่ง Ansible
+
+### 17.1 `ansible` (ad-hoc)
+รูปแบบ: `ansible <pattern> [options]`
+
+| Option | ความหมาย | ตัวอย่าง |
+|---|---|---|
+| `-m` | module ที่จะใช้ (ค่าเริ่มต้นคือ `command`) | `-m ping`, `-m apt` |
+| `-a` | argument ของ module | `-a "name=nginx state=present"` |
+| `-i` | ระบุไฟล์ inventory | `-i inventory/hosts.ini` |
+| `-l`, `--limit` | จำกัดให้ทำเฉพาะบางเครื่องหรือกลุ่ม | `-l web01`, `-l 'web:!web02'` |
+| `-b`, `--become` | ยกสิทธิ์เป็น root (sudo) | `-b` |
+| `-K`, `--ask-become-pass` | ถามรหัสผ่าน sudo | `-K` |
+| `--become-user` | ยกสิทธิ์เป็น user อื่นที่ไม่ใช่ root | `--become-user postgres` |
+| `-u`, `--user` | user ที่ใช้ SSH | `-u ansible` |
+| `-k`, `--ask-pass` | ถามรหัสผ่าน SSH | `-k` |
+| `--private-key` | ระบุไฟล์ SSH key | `--private-key ~/.ssh/id_ed25519` |
+| `-e`, `--extra-vars` | ส่งตัวแปรเข้าไป (priority สูงสุด) | `-e "port=8080"`, `-e @vars.yml` |
+| `-f`, `--forks` | จำนวนเครื่องที่ทำพร้อมกัน (ค่าเริ่มต้น 5) | `-f 20` |
+| `-o`, `--one-line` | แสดงผลบรรทัดเดียวต่อเครื่อง | `-o` |
+| `-t`, `--tree` | บันทึกผลลัพธ์เป็นไฟล์ แยกตามเครื่อง | `-t /tmp/out` |
+| `-C`, `--check` | ลองรันโดยไม่เปลี่ยนจริง (dry-run) | `-C` |
+| `-D`, `--diff` | แสดงส่วนต่างของไฟล์ที่จะเปลี่ยน | `-CD` |
+| `-T`, `--timeout` | timeout ของการเชื่อมต่อ (วินาที) | `-T 30` |
+| `-v` ถึง `-vvvv` | ระดับความละเอียดของ log | `-vvv` |
+| `--list-hosts` | แสดงรายชื่อเครื่องที่ตรงเงื่อนไข ไม่รันจริง | `--list-hosts` |
+
+> ถ้าคำสั่งมี pipe, `>` หรือตัวแปร shell ให้ใช้ `-m shell` เช่น `-m shell -a "ps aux | wc -l"`
+
+ตัวอย่างรวม:
+```bash
+ansible web -i inventory/hosts.ini -b -m apt -a "name=nginx state=present update_cache=true" -f 10
+```
+
+### 17.2 `ansible-playbook`
+รูปแบบ: `ansible-playbook [options] playbook.yml`
+รับ option ของ `ansible` ข้างบนได้เกือบทั้งหมด (`-i -l -b -K -u -e -f -C -D -v`) และมีเพิ่มดังนี้
+
+| Option | ความหมาย |
+|---|---|
+| `--syntax-check` | ตรวจ syntax เท่านั้น ไม่รัน |
+| `--list-tasks` | แสดง task ทั้งหมดที่จะรัน |
+| `--list-tags` | แสดง tag ทั้งหมด |
+| `-t`, `--tags` | รันเฉพาะ task ที่มี tag นี้ (`-t nginx,config`) |
+| `--skip-tags` | ข้าม task ที่มี tag นี้ |
+| `--start-at-task` | เริ่มรันจาก task ที่ระบุชื่อ |
+| `--step` | รันทีละ task พร้อมถามยืนยัน |
+| `--vault-password-file` | ไฟล์รหัสผ่านสำหรับถอด Vault |
+| `--ask-vault-pass` | ถามรหัสผ่าน Vault |
+| `-e @file.yml` | โหลดตัวแปรจากไฟล์ |
+| `--force-handlers` | รัน handler แม้ task ก่อนหน้าจะล้มเหลว |
+| `--flush-cache` | ล้าง fact cache |
+
+> ระวัง: `-t` ใน `ansible-playbook` คือ `--tags` แต่ใน `ansible` ธรรมดาคือ `--tree`
+
+### 17.3 เครื่องมืออื่นในชุด Ansible
+| คำสั่ง | ใช้ทำอะไร | Option ที่ใช้บ่อย |
+|---|---|---|
+| `ansible-inventory` | ดู inventory | `--graph` (ต้นไม้), `--list` (JSON), `--host web01` |
+| `ansible-doc` | อ่านเอกสาร module ในเครื่อง | `ansible-doc apt`, `-l` (รายชื่อทั้งหมด), `-s apt` (สรุป syntax) |
+| `ansible-config` | ดู/ตรวจ config | `dump --only-changed`, `list`, `view` |
+| `ansible-vault` | เข้ารหัสไฟล์/ค่า | `create`, `encrypt`, `decrypt`, `edit`, `view`, `rekey`, `encrypt_string` |
+| `ansible-galaxy` | ติดตั้ง role/collection | `install -r requirements.yml`, `init <role>`, `collection install` |
+| `ansible-lint` | ตรวจคุณภาพ playbook | `-p` (ผลย่อ), `--profile production` |
+| `ansible-pull` | ให้เครื่องปลายทางดึง playbook จาก Git มารันเอง | `-U <repo-url>` |
+| `ansible-console` | โหมดโต้ตอบ (REPL) | `ansible-console web` |
+
+### 17.4 ตัวอย่างที่ใช้จริง
+```bash
+# ดูว่า inventory อ่านถูกไหม
+ansible-inventory --graph
+
+# เช็ก memory ทุกเครื่องในกลุ่ม web
+ansible web -m command -a "free -m"
+
+# อ่านวิธีใช้ module dnf
+ansible-doc ansible.builtin.dnf
+
+# ลองรันก่อนใช้จริง เฉพาะเครื่อง web01 และเฉพาะ tag nginx
+ansible-playbook site.yml -l web01 -t nginx --check --diff
+
+# รันจริง ส่งตัวแปร และดู log ละเอียด
+ansible-playbook site.yml -e "http_port=8080" -vv
+```
