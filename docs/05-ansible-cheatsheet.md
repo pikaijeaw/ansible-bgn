@@ -113,6 +113,63 @@ ansible_user=ansible
 
 > เลือกโมดูลเฉพาะทางก่อน `command`/`shell` เสมอ เพราะโมดูลเฉพาะ idempotent เอง ส่วน `command`/`shell` ต้องใส่ `creates:` หรือ `changed_when:` เอง
 
+### 6.1 ค่า `state` ของแต่ละโมดูล (บอก "สถานะที่ต้องการ")
+`state:` คือหัวใจของ Ansible แบบ declarative: เราบอกว่าอยากได้สถานะอะไร ไม่ใช่สั่งว่าให้ทำคำสั่งอะไร ถ้าเครื่องเป็นสถานะนั้นอยู่แล้ว Ansible จะไม่ทำอะไร (`ok`) ถ้าไม่ตรงจึงแก้ให้ (`changed`)
+ค่าที่ใช้ได้ขึ้นกับแต่ละโมดูล ตารางนี้สรุปที่ใช้บ่อย:
+
+| โมดูล | ค่า `state` | ความหมาย / ใช้ทำอะไร |
+|---|---|---|
+| `apt`, `dnf`, `package` | `present` | ให้มีแพ็กเกจติดตั้งอยู่ (ถ้ามีแล้วไม่ทำอะไร, ไม่อัปเดตเวอร์ชัน) |
+| | `latest` | ให้เป็นเวอร์ชันล่าสุดเสมอ (อัปเดตถ้ามีใหม่) ระวังใน production |
+| | `absent` | ให้ไม่มีแพ็กเกจนี้ (ถอนการติดตั้ง) |
+| | `fixed` (apt) | ซ่อมแพ็กเกจที่พัง |
+| `service`, `systemd` | `started` | ให้รันอยู่ (ถ้ารันอยู่แล้วไม่ทำอะไร) |
+| | `stopped` | ให้หยุดอยู่ |
+| | `restarted` | restart ทุกครั้งที่รัน (จึงรายงาน `changed` เสมอ) ควรใช้ผ่าน handler |
+| | `reloaded` | โหลด config ใหม่โดยไม่ตัด connection (เหมาะกับ nginx) |
+| `file` | `file` | ให้เป็นไฟล์ปกติที่มีอยู่แล้ว (ตั้งสิทธิ์/owner) ไม่สร้างให้ |
+| | `directory` | ให้เป็นโฟลเดอร์ (สร้างให้ถ้ายังไม่มี) |
+| | `touch` | สร้างไฟล์ว่าง/อัปเดตเวลาแก้ไข (จะ `changed` ทุกครั้ง) |
+| | `link` | ให้เป็น symbolic link (ต้องมี `src`) |
+| | `hard` | ให้เป็น hard link |
+| | `absent` | ให้ไม่มีไฟล์/โฟลเดอร์นี้ (ลบ) |
+| `user`, `group` | `present` | ให้มี user/group นี้ (สร้างถ้ายังไม่มี) |
+| | `absent` | ให้ไม่มี (ลบ, ใส่ `remove: true` เพื่อลบ home ด้วย) |
+| `lineinfile`, `blockinfile` | `present` | ให้มีบรรทัด/บล็อกนี้อยู่ในไฟล์ |
+| | `absent` | ให้ไม่มีบรรทัด/บล็อกนี้ |
+| `authorized_key`, `cron`, `mount`, `sysctl` | `present` / `absent` | ให้มี / ไม่มีรายการนั้น |
+| `mount` | `mounted`, `unmounted`, `remounted` | mount พร้อมเขียน fstab / unmount / mount ใหม่ |
+| `git` | (ใช้ `version`) | ไม่มี `state` แต่ระบุ branch/tag ที่ต้องการด้วย `version:` |
+| `docker_container` (community.docker) | `started`, `stopped`, `present`, `absent` | จัดการ container |
+| `ufw` / `firewalld` | `enabled`, `disabled`, `reloaded` | เปิด/ปิด firewall |
+| `pip` | `present`, `latest`, `absent`, `forcereinstall` | จัดการแพ็กเกจ Python |
+
+ตัวอย่าง:
+```yaml
+- name: Remove telnet
+  ansible.builtin.apt:
+    name: telnet
+    state: absent
+
+- name: Create app directory
+  ansible.builtin.file:
+    path: /opt/myapp
+    state: directory
+    owner: appuser
+    mode: "0755"
+
+- name: Enable symlink for site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/myapp
+    dest: /etc/nginx/sites-enabled/myapp
+    state: link
+```
+**ข้อควรจำ:**
+- `present`/`absent` ใช้ได้กับโมดูลส่วนใหญ่ ส่วนค่าอื่นเฉพาะบางโมดูล เปิดดูได้ด้วย `ansible-doc <module>`
+- ถ้าไม่ใส่ `state` โมดูลจะใช้ค่าเริ่มต้นของมันเอง (เช่น `apt`/`file`/`user` ใช้ `present`/`file`) ควรเขียนให้ชัดเสมอ
+- `restarted` และ `touch` ไม่ idempotent ใช้เมื่อจำเป็น
+- `service: state=started` ไม่ได้ทำให้เปิดตอนบูต ต้องใส่ `enabled: true` คู่กัน
+
 ## 7. ตัวแปรและ Jinja2
 ```yaml
 vars:
