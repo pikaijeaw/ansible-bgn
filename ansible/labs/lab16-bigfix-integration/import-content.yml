@@ -6,7 +6,9 @@
   gather_facts: false
 
   vars:
-    bes_root: "{{ (playbook_dir ~ '/../../../bigfix/labs') | realpath }}"
+    # ไฟล์ .bes อยู่ใน repo bigfix-labs: clone ไว้ที่ root ของ ansible-bgn (ดู README ของ lab)
+    # หรือชี้ path เองด้วย env BIGFIX_LABS_DIR
+    bes_root: "{{ lookup('ansible.builtin.env', 'BIGFIX_LABS_DIR') | default(playbook_dir ~ '/../../../bigfix-labs/labs', true) | realpath }}"
     bes_files: "{{ found.files | map(attribute='path') | sort }}"
 
   tasks:
@@ -20,7 +22,9 @@
     - name: Fail if no content found
       ansible.builtin.assert:
         that: bes_files | length > 0
-        fail_msg: "no .bes files under {{ bes_root }}"
+        fail_msg: >-
+          no .bes files under {{ bes_root }}.
+          Clone https://github.com/pikaijeaw/bigfix-labs into the ansible-bgn repo root (or set BIGFIX_LABS_DIR)
 
     - name: Validate every file is well-formed XML before upload
       ansible.builtin.command: python3 -c "import sys, xml.dom.minidom as m; m.parse(sys.argv[1])" {{ item }}

@@ -1,19 +1,17 @@
-# ansible-bgn: เรียน Ansible + BigFix จาก Lab ใช้งานจริง
+# ansible-bgn: เรียน Ansible จาก Lab ใช้งานจริง
 
-repo สำหรับเรียน **Ansible** และ **HCL BigFix** ตั้งแต่หลักการไปจนถึงงานที่ทำกันจริงในองค์กร
-มี lab ที่รันได้จริง 17 lab ฝั่ง Ansible (บน Docker) และ 15 lab ฝั่ง BigFix (มี Fixlet/Task/Analysis ที่ import ได้ 29 ไฟล์)
+repo สำหรับเรียน **Ansible** ตั้งแต่หลักการไปจนถึงงานที่ทำกันจริงในองค์กร มี lab ที่รันได้จริง 17 lab (บน Docker)
+
+> ส่วน **HCL BigFix** แยกไปอยู่ที่ repo [bigfix-labs](https://github.com/pikaijeaw/bigfix-labs) แล้ว (15 lab, ไฟล์ Fixlet/Task/Analysis 29 ไฟล์, cheat sheet และตารางเรียน)
 
 ## เริ่มที่ไหน
 | เอกสาร | เนื้อหา |
 |---|---|
 | [docs/01-ansible-principles.md](docs/01-ansible-principles.md) | หลักการทำงานของ Ansible |
-| [docs/02-bigfix-principles.md](docs/02-bigfix-principles.md) | หลักการทำงานของ BigFix และการเปรียบเทียบกับ Ansible |
-| [docs/03-learning-plan.md](docs/03-learning-plan.md) | **ตารางการเรียนรู้ 12 สัปดาห์** ที่ผูกกับทุก lab |
+| [docs/03-learning-plan.md](docs/03-learning-plan.md) | **ตารางการเรียนรู้ Ansible 6 สัปดาห์** ที่ผูกกับทุก lab |
 | [docs/04-wsl-setup.md](docs/04-wsl-setup.md) | ตั้ง lab บน Windows ด้วย WSL2 + ปัญหาที่อาจเจอ |
 | [docs/05-ansible-cheatsheet.md](docs/05-ansible-cheatsheet.md) | **สรุป Ansible ภาษาไทย** เฉพาะที่สำคัญและใช้งานจริง (cheat sheet) |
-| [docs/06-bigfix-cheatsheet.md](docs/06-bigfix-cheatsheet.md) | **สรุป BigFix ภาษาไทย** เฉพาะที่สำคัญและใช้งานจริง (cheat sheet) |
 | [ansible/README.md](ansible/README.md) | วิธีตั้ง lab (Docker) และรายการ Ansible lab |
-| [bigfix/README.md](bigfix/README.md) | วิธีตั้ง lab server และรายการ BigFix lab |
 
 ## Quick start (Ansible)
 บน Windows ให้ทำตาม [docs/04-wsl-setup.md](docs/04-wsl-setup.md) ก่อน
@@ -27,7 +25,7 @@ ansible-playbook labs/lab05-roles/site.yml      # ระบบ web 3-tier ทั
 ```
 
 ## ตัวอย่างงานจริงที่มีใน repo
-| งาน | Ansible | BigFix |
+| งาน | Ansible | BigFix ([bigfix-labs](https://github.com/pikaijeaw/bigfix-labs)) |
 |---|---|---|
 | Baseline / มาตรฐานเครื่องใหม่ | lab02, lab05 | lab14 (client settings) |
 | ติดตั้ง/ถอนซอฟต์แวร์ | lab04, lab11, lab15 | lab05, lab06, lab07 |
@@ -42,14 +40,10 @@ ansible-playbook labs/lab05-roles/site.yml      # ระบบ web 3-tier ทั
 
 ## โครงสร้าง repo
 ```
-├── docs/                      หลักการทำงาน + ตารางเรียน
+├── docs/                      หลักการทำงาน, ตารางเรียน, WSL, cheat sheet
 ├── ansible/
 │   ├── lab-env/               Docker lab (control, lb01, web01, web02, db01, bigfix-mock)
 │   ├── inventory/  ansible.cfg  requirements.yml
 │   └── labs/lab01..lab17/     README + playbook/roles
-├── bigfix/
-│   ├── labs/lab01..lab15/     README + ไฟล์ .bes
-│   ├── api/bigfix_api.py      REST API client
-│   └── scripts/validate_bes.py
-└── .github/workflows/ci.yml   ansible-lint + syntax check + ตรวจ .bes
+└── .github/workflows/ci.yml   ansible-lint + syntax check + smoke test BigFix mock
 ```

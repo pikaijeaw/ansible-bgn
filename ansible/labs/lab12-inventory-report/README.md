@@ -29,4 +29,4 @@ ansible-playbook labs/lab12-inventory-report/report.yml -e low_disk_gb=30    # �
 1. เพิ่มคอลัมน์ `openssl_version` จาก `ansible_facts['packages']['openssl'][0]['version']`
 2. ส่งรายงานทางอีเมลด้วย `community.general.mail` (แนบไฟล์ HTML)
 3. POST ไฟล์ JSON เข้า CMDB API ด้วย `ansible.builtin.uri` (`method: POST`, `body_format: json`)
-4. เทียบกับ BigFix: งานแบบนี้ BigFix ทำด้วย **Analysis + Web Reports** และได้ข้อมูลแทบ real-time (ดู `bigfix/labs/lab03-inventory-analysis`)
+4. เทียบกับ BigFix: งานแบบนี้ BigFix ทำด้วย **Analysis + Web Reports** และได้ข้อมูลแทบ real-time (ดู [bigfix-labs: lab03-inventory-analysis](https://github.com/pikaijeaw/bigfix-labs/tree/main/labs/lab03-inventory-analysis))

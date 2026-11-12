@@ -8,7 +8,7 @@
 |---|---|
 | `ansible/.ansible-lint` | config ของ ansible-lint (profile `production` ระดับเข้มที่สุด) |
 | `ansible/scripts/syntax-check.sh` | `--syntax-check` ทุก playbook ใน `labs/` |
-| `.github/workflows/ci.yml` | GitHub Actions รัน lint + syntax check + ตรวจไฟล์ BigFix `.bes` ทุก push และ PR |
+| `.github/workflows/ci.yml` | GitHub Actions รัน lint + syntax check + smoke test BigFix mock ทุก push และ PR |
 
 ## ขั้นตอน
 ```bash

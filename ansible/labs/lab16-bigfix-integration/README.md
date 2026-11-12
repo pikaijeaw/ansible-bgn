@@ -32,7 +32,8 @@ ansible-playbook labs/lab16-bigfix-integration/patch-compliance.yml
 ansible-playbook labs/lab16-bigfix-integration/patch-compliance.yml \
   -e deploy_fixlet_id=701 -e "deploy_site='Patches for Ubuntu 2404'"
 
-# 3) import ไฟล์ .bes ทั้งหมดใน bigfix/labs/ เข้า custom site
+# 3) import ไฟล์ .bes ทั้งหมดจาก repo bigfix-labs เข้า custom site
+#    (ครั้งแรกให้ clone ไว้ที่ root ของ ansible-bgn ก่อน: ดูหัวข้อด้านล่าง)
 ansible-playbook labs/lab16-bigfix-integration/import-content.yml
 
 # 4) สร้าง Ansible inventory จาก BigFix
@@ -52,7 +53,15 @@ curl -s -u admin:'BigFix123!' "http://bigfix-mock:52311/api/query?output=json" \
   --data-urlencode "relevance=names of bes computers" -G | jq
 docker logs bigfix-mock      # ดู action ที่ถูกสร้าง
 ```
-ดู script Python ที่ใช้กับ BigFix จริงได้ที่ [`bigfix/api/`](../../../bigfix/api/)
+### เตรียมไฟล์ .bes สำหรับขั้นที่ 3
+ไฟล์ Fixlet/Task/Analysis อยู่ใน repo แยก [bigfix-labs](https://github.com/pikaijeaw/bigfix-labs) ให้ clone ไว้ที่ root ของ ansible-bgn (container `control` เห็นโฟลเดอร์นี้ที่ `/work/bigfix-labs`):
+```bash
+cd ~/ansible-bgn      # รันบนเครื่องเรา ไม่ใช่ใน container
+git clone https://github.com/pikaijeaw/bigfix-labs.git
+```
+โฟลเดอร์ `bigfix-labs/` ถูกใส่ใน `.gitignore` แล้ว ถ้าเก็บไว้ที่อื่นให้ตั้ง `BIGFIX_LABS_DIR=/path/to/bigfix-labs/labs`
+
+ดู script Python ที่ใช้กับ BigFix จริงได้ที่ [bigfix-labs/api](https://github.com/pikaijeaw/bigfix-labs/tree/main/api)
 
 ## ข้อควรระวังกับ BigFix จริง
 - ใช้ operator ที่สร้างไว้สำหรับ API โดยเฉพาะ ให้สิทธิ์เฉพาะ site และกลุ่มเครื่องที่จำเป็น

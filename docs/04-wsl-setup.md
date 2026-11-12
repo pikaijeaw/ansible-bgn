@@ -9,8 +9,9 @@ lab ถูกทดสอบบน Linux (Ubuntu 24.04 + Docker Engine) ส่�
 |---|---|
 | Ansible lab 01–14, 16, 17 | ✅ ได้ทั้งหมด |
 | Ansible lab 15 (Windows) | ⚠️ ต้องมี Windows VM แยก (Hyper-V/VirtualBox) อย่าใช้ Windows ตัวเครื่องตัวเอง เพราะ playbook แก้ registry และลง Windows Update จริง |
-| BigFix: ไฟล์ `.bes`, `validate_bes.py`, `bigfix_api.py`, BigFix API จำลอง | ✅ ได้ |
-| BigFix server และ agent จริง | ❌ server ต้องลงบน Windows Server ต้องสร้าง VM แยก (ดู [bigfix/README.md](../bigfix/README.md)) |
+| BigFix API จำลอง (`bigfix-mock`) และ Ansible lab16 | ✅ ได้ |
+| BigFix lab ([bigfix-labs](https://github.com/pikaijeaw/bigfix-labs)): ไฟล์ `.bes`, `validate_bes.py`, `bigfix_api.py` | ✅ ได้ |
+| BigFix server และ agent จริง | ❌ server ต้องลงบน Windows Server ต้องสร้าง VM แยก (ดู [README ของ bigfix-labs](https://github.com/pikaijeaw/bigfix-labs#readme)) |
 
 ## สิ่งที่ต้องมี
 - Windows 10 (22H2) หรือ Windows 11 ที่เปิด virtualization ใน BIOS แล้ว

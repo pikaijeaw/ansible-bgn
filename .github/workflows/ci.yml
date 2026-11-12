@@ -29,8 +29,8 @@ jobs:
       - name: ansible-lint (production profile)
         run: ansible-lint
 
-  bigfix-content:
-    name: BigFix content validation
+  bigfix-mock:
+    name: BigFix mock smoke test (lab16)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -38,9 +38,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Validate .bes files
-        run: python3 bigfix/scripts/validate_bes.py bigfix/labs
 
       - name: Smoke test BigFix API mock
         run: |
