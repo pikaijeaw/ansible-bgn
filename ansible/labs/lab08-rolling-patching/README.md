@@ -63,4 +63,4 @@ lab จึง override `lab_boot_time_command` ใน `inventory/group_vars/all.
 1. เพิ่มการแจ้งเตือนเข้า Slack/Teams ตอนเริ่มและจบ patch (`community.general.slack` หรือ `uri` ไปที่ webhook)
 2. เพิ่มการบันทึกรายชื่อ package ที่อัปเกรดลงไฟล์ (Debian: ดู `/var/log/apt/history.log`)
 3. ทำให้ db01 patch ได้เฉพาะเสาร์-อาทิตย์ ด้วย `assert` + `now().weekday()`
-4. เปรียบเทียบกับ BigFix: BigFix ใช้ Baseline + Maintenance Window ทำงานแบบเดียวกันกับ endpoint หลายพันเครื่อง (ดู `bigfix/labs/lab10-patch-management`)
+4. เปรียบเทียบกับ BigFix: BigFix ใช้ Baseline + Maintenance Window ทำงานแบบเดียวกันกับ endpoint หลายพันเครื่อง (ดู [bigfix-labs: lab10-patch-management](https://github.com/pikaijeaw/bigfix-labs/tree/main/labs/lab10-patch-management))

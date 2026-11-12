@@ -1,8 +1,8 @@
-# ตารางการเรียนรู้ Ansible + BigFix (12 สัปดาห์ วันละประมาณ 1–2 ชั่วโมง)
+# ตารางการเรียนรู้ Ansible (6 สัปดาห์ วันละประมาณ 1–2 ชั่วโมง)
 
 แต่ละสัปดาห์ผูกกับ lab ใน repo นี้ ทำเสร็จแล้วติ๊ก ☐ → ☑ ได้เลย
 
-## Phase A: Ansible (สัปดาห์ 1–6)
+## Ansible (สัปดาห์ 1–6)
 | สัปดาห์ | หัวข้อ | Lab | เป้าหมาย / หลักฐานว่าผ่าน | ☐ |
 |---|---|---|---|---|
 | 1 | Linux, SSH key, YAML, ติดตั้ง lab | [lab-env](../ansible/lab-env/) | `./setup.sh` แล้ว `ansible all -m ping` ได้ pong ทุกเครื่อง | ☐ |
@@ -19,22 +19,10 @@
 | 6 | Monitoring agent, inventory report | [11](../ansible/labs/lab11-monitoring-agent/), [12](../ansible/labs/lab12-inventory-report/) | ได้ไฟล์ HTML report | ☐ |
 | 6 | Health check, incident runbooks | [13](../ansible/labs/lab13-health-check/), [14](../ansible/labs/lab14-incident-response/) | จับ nginx ล่มได้และ auto-recover | ☐ |
 | 6 | Windows, CI/lint | [15](../ansible/labs/lab15-windows/), [17](../ansible/labs/lab17-ci-quality/) | `ansible-lint` ผ่าน, GitHub Actions เขียว | ☐ |
+| 6 | **Integration project** (BigFix API จำลอง) | [Ansible lab16](../ansible/labs/lab16-bigfix-integration/) | Ansible ดึง patch ค้างจาก BigFix → สั่ง deploy → สร้าง inventory จาก BigFix | ☐ |
 
-## Phase B: BigFix (สัปดาห์ 7–12)
-| สัปดาห์ | หัวข้อ | Lab | เป้าหมาย / หลักฐานว่าผ่าน | ☐ |
-|---|---|---|---|---|
-| 7 | Concept & Architecture | [principles](02-bigfix-principles.md) | วาด flow 7 ขั้นเองได้โดยไม่ดูเอกสาร | ☐ |
-| 7 | ติดตั้ง lab server + agents | [README](../bigfix/README.md) | เห็น client 2–3 เครื่องใน Console | ☐ |
-| 8 | Client Relevance | [01](../bigfix/labs/lab01-relevance-basics/) | ทำโจทย์ข้อ 5 ได้ก่อนเปิดเฉลย | ☐ |
-| 8 | Computer Groups | [04](../bigfix/labs/lab04-computer-groups/) | group มีสมาชิกถูกต้อง | ☐ |
-| 9 | Analyses / Inventory | [03](../bigfix/labs/lab03-inventory-analysis/), [12](../bigfix/labs/lab12-local-admin-audit/) | export CSV จาก Web Reports | ☐ |
-| 9 | Session Relevance | [02](../bigfix/labs/lab02-session-relevance/) | หาเครื่องที่เงียบเกิน 7 วันได้ | ☐ |
-| 10 | ActionScript + Software Distribution | [05](../bigfix/labs/lab05-software-deploy-windows/), [06](../bigfix/labs/lab06-software-uninstall/), [07](../bigfix/labs/lab07-linux-software/) | ติดตั้ง/ถอน 7-Zip ด้วย Task ของตัวเอง | ☐ |
-| 10 | Self-healing, disk cleanup | [08](../bigfix/labs/lab08-service-self-healing/), [11](../bigfix/labs/lab11-disk-cleanup/) | หยุด W32Time แล้วกลับมาเอง | ☐ |
-| 11 | Patch Management + Baseline | [10](../bigfix/labs/lab10-patch-management/) | baseline Pilot → Prod ตาม process | ☐ |
-| 11 | Hardening, script result capture | [09](../bigfix/labs/lab09-security-hardening/), [13](../bigfix/labs/lab13-script-result-capture/) | SMBv1 ขึ้น Fixed | ☐ |
-| 12 | Client settings, REST API | [14](../bigfix/labs/lab14-client-settings/), [15](../bigfix/labs/lab15-rest-api/) | `bigfix_api.py import` ได้ | ☐ |
-| 12 | **Integration project** | [Ansible lab16](../ansible/labs/lab16-bigfix-integration/) | Ansible ดึง patch ค้างจาก BigFix → สั่ง deploy → สร้าง inventory จาก BigFix | ☐ |
+## ต่อด้วย BigFix (สัปดาห์ 7–12)
+ตาราง BigFix ย้ายไปอยู่ที่ [bigfix-labs: docs/03-learning-plan.md](https://github.com/pikaijeaw/bigfix-labs/blob/main/docs/03-learning-plan.md)
 
 ## ตารางรายวัน (ใช้ซ้ำได้ทุกสัปดาห์)
 | วัน | กิจกรรม |
